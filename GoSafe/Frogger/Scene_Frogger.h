@@ -1,4 +1,4 @@
-//
+﻿//
 // Created by David Burchill on 2023-09-27.
 //
 
@@ -10,7 +10,6 @@
 #include "Entity.h"
 #include "Scene.h"
 #include "GameEngine.h"
-
 
 class Scene_Frogger : public Scene {
 
@@ -30,20 +29,24 @@ private:
     int             m_lives;
     int             m_reachGoal;
 
+    // 🟢 New: Background Image Variables
+    sf::Texture     backgroundTexture;
+    sf::Sprite      backgroundSprite;
+
+    // 🔹 Game Logic Functions
     void            sMovement(sf::Time dt);
     void            sCollisions();
     void            sUpdate(sf::Time dt);
     void            sAnimation(sf::Time dt);
 
     void	        onEnd() override;
-
-
     void            playerMovement();
     void            adjustPlayerPosition();
     void            checkPlayerState();
     void	        registerActions();
     void            spawnPlayer(sf::Vector2f pos);
 
+    // 🔹 Spawning Game Objects
     void            spawnLane1();
     void            spawnLane2();
     void            spawnLane3();
@@ -59,18 +62,19 @@ private:
 
     void            resetPlayer();
     void            killPlayer();
-
     void            updateScore();
 
-    void            init(const std::string& path);
+    // 🟢 New: Load Level and Background
     void            loadLevel(const std::string& path);
+    void            loadBackground(); // 🆕 Function to load background image
+
     sf::FloatRect   getViewBounds();
 
-
 public:
-	 Scene_Frogger(GameEngine* gameEngine, const std::string& levelPath);
+    Scene_Frogger(GameEngine* gameEngine, const std::string& levelPath);
 
-	 void		update(sf::Time dt) override;
-	 void		sDoAction(const Command& action) override;
-	 void		sRender() override;
+    void init(const std::string& path); // Ensure initialization
+    void update(sf::Time dt) override;
+    void sDoAction(const Command& action) override;
+    void sRender() override;
 };

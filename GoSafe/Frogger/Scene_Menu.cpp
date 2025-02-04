@@ -53,10 +53,11 @@ void Scene_Menu::sRender()
 	view.setCenter(_game->window().getSize().x / 2.f, _game->window().getSize().y / 2.f);
 	_game->window().setView(view);
 
-	static const sf::Color selectedColor(255, 255, 255);
+	static const sf::Color selectedColor(120, 0, 0);
 	static const sf::Color normalColor(0, 0, 0);
 
-	static const sf::Color backgroundColor(100, 100, 255);
+	static const sf::Color backgroundColor(122, 100, 255);
+
 
 	sf::Text footer("UP: W    DOWN: S   PLAY:D    QUIT: ESC", 
 		Assets::getInstance().getFont("main"), 20);

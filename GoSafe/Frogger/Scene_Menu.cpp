@@ -83,6 +83,7 @@ void Scene_Menu::sRender()
 }
 
 
+
 void Scene_Menu::sDoAction(const Command& action)
 {
 	if (action.type() == "START")
@@ -90,13 +91,17 @@ void Scene_Menu::sDoAction(const Command& action)
 		if (action.name() == "UP")
 		{
 			_menuIndex = (_menuIndex + _menuStrings.size() - 1) % _menuStrings.size();
-		} 
+		}
 		else if (action.name() == "DOWN")
 		{
 			_menuIndex = (_menuIndex + 1) % _menuStrings.size();
 		}
 		else if (action.name() == "PLAY")
 		{
+			std::cout << "Starting game..." << std::endl;
+
+			_game->window().clear();
+
 			_game->changeScene("PLAY", std::make_shared<Scene_Frogger>(_game, _levelPaths[_menuIndex]));
 		}
 		else if (action.name() == "QUIT")
@@ -104,5 +109,4 @@ void Scene_Menu::sDoAction(const Command& action)
 			onEnd();
 		}
 	}
-
 }

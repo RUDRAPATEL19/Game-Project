@@ -12,7 +12,7 @@ Music missionTheme      ../assets/Music/tweener.ogg
 # Textures
 Texture Background      ../assets/Textures/background01.png
 Texture Title           ../assets/Textures/FroggerTitle.png
-Texture Entities        ../assets/Textures/Soldier.png
+Texture Entities        ../assets/Textures/FroggerAtlas.png
 
 # Sprites
 Sprite Background       Background   0 0  480 600

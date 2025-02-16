@@ -87,13 +87,11 @@ std::shared_ptr<Scene> GameEngine::currentScene()
 
 void GameEngine::changeScene(const std::string& sceneName, std::shared_ptr<Scene> scene, bool endCurrentScene)
 {
-    // If we need to end the current scene, erase it
     if (endCurrentScene && _sceneMap.contains(_currentScene))
     {
         _sceneMap.erase(_currentScene);
     }
 
-    // If the scene is not already in the map, add it
     if (!_sceneMap.contains(sceneName))
     {
         _sceneMap[sceneName] = scene;
@@ -102,7 +100,6 @@ void GameEngine::changeScene(const std::string& sceneName, std::shared_ptr<Scene
     // Set the new scene as the active scene
     _currentScene = sceneName;
 
-    // Prevent flickering: Clear and render the new scene immediately
     _window.clear();
     _sceneMap[_currentScene]->sRender();
     _window.display();
@@ -117,23 +114,23 @@ void GameEngine::quit()
 
 void GameEngine::run()
 {
-	const sf::Time SPF = sf::seconds(1.0f / 60.f);  // seconds per frame for 60 fps 
+	const sf::Time SPF = sf::seconds(1.0f / 60.f); 
 
 	sf::Clock clock;
 	sf::Time timeSinceLastUpdate = sf::Time::Zero;
 
 	while (isRunning())
 	{
-		sUserInput();								// get user input
+		sUserInput();								
 
 		timeSinceLastUpdate += clock.restart();		 
 		while (timeSinceLastUpdate > SPF)
 		{
-			currentScene()->update(SPF);			// update world
+			currentScene()->update(SPF);			
 			timeSinceLastUpdate -= SPF;
 		}
 
-		currentScene()->sRender();					// render world
+		currentScene()->sRender();	
 
 		// draw stats
 

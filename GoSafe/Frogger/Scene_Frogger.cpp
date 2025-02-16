@@ -34,34 +34,25 @@ void Scene_Frogger::init(const std::string& path)
         );
     }
 
-    // --- Spawn Enemy Cars Outside the River (Upper & Lower Lanes) ---
-    // Example: Two lanes outside the river
-    float laneTop1 = winSize.y * 0.08f;   // Upper lane (near top)
-    float laneTop2 = winSize.y * 0.22f;  // Second upper lane
+    float laneTop1 = winSize.y * 0.08f;   
+    float laneTop2 = winSize.y * 0.22f;  
     spawnEnemyCar(sf::Vector2f(-100.f, laneTop1), 100.f);
     spawnEnemyCar(sf::Vector2f(winSize.x + 100.f, laneTop2), -120.f);
 
-    float laneBottom1 = winSize.y * 0.73f;  // First lower lane
-    float laneBottom2 = winSize.y * 0.88f;     // Second lower lane
+    float laneBottom1 = winSize.y * 0.73f; 
+    float laneBottom2 = winSize.y * 0.88f;    
     spawnEnemyCar(sf::Vector2f(-100.f, laneBottom1), 110.f);
     spawnEnemyCar(sf::Vector2f(winSize.x + 100.f, laneBottom2), -130.f);
 
-    // --- Spawn Logs and River Enemies in the River Region ---
-    // Define the river region. Previously you used 30%-70%; now we shift them upward
-    // and reduce the separation between the two lanes.
-    // For example, we can choose two lanes at 35% and 45% of the window height.
-    float riverLaneUpper = winSize.y * 0.38f; // Upper river lane (shifted upward)
-    float riverLaneLower = winSize.y * 0.55f; // Lower river lane (closer to the upper lane)
+    float riverLaneUpper = winSize.y * 0.38f; 
+    float riverLaneLower = winSize.y * 0.55f; 
 
-    // In the upper river lane, have both logs and river enemies move to the right.
-    spawnLog(sf::Vector2f(-200.f, riverLaneUpper), 80.f);            // Log starting off-screen left.
-    spawnRiverEnemy(sf::Vector2f(winSize.x + 150.f, riverLaneUpper), 80.f); // River enemy starting off-screen right.
+    spawnLog(sf::Vector2f(-200.f, riverLaneUpper), 80.f);          
+    spawnRiverEnemy(sf::Vector2f(winSize.x + 150.f, riverLaneUpper), 80.f);
 
-    // In the lower river lane, have both logs and river enemies move to the left.
-    spawnLog(sf::Vector2f(winSize.x + 200.f, riverLaneLower), -90.f);   // Log starting off-screen right.
-    spawnRiverEnemy(sf::Vector2f(-150.f, riverLaneLower), -90.f);        // River enemy starting off-screen left.
+    spawnLog(sf::Vector2f(winSize.x + 200.f, riverLaneLower), -90.f); 
+    spawnRiverEnemy(sf::Vector2f(-150.f, riverLaneLower), -90.f);      
 
-    // --- Other Initialization ---
     m_score = 0;
     m_lives = 3;
     m_maxHeight = 0;

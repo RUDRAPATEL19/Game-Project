@@ -29,6 +29,7 @@ struct RiverEnemy {
 class Scene_Frogger : public Scene {
 
 private:
+
     sf::Sprite playerSprite;
     std::vector<sf::Sprite> enemies;
     sf::Sprite enemySprite;

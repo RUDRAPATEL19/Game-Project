@@ -59,6 +59,16 @@ void Scene_Frogger::init(const std::string& path)
 }
 
 
+void Scene_Frogger::resetPlayer()
+{
+    const sf::Vector2u winSize = _game->window().getSize();
+    sf::FloatRect playerBounds = playerSprite.getLocalBounds();
+    float playerX = winSize.x / 2.f;
+    float playerY = winSize.y - playerBounds.height / 2.f;
+    playerSprite.setPosition(playerX, playerY);
+}
+
+
 void Scene_Frogger::loadBackground()
 {
     if (!backgroundTexture.loadFromFile("../assets/Textures/background01.png")) {
@@ -87,13 +97,13 @@ void Scene_Frogger::update(sf::Time dt)
     // --- Player Movement (as before) ---
     const float moveSpeed = 150.f;
     sf::Vector2f movement(0.f, 0.f);
-    if (sf::Keyboard::isKeyPressed(sf::Keyboard::Up))
+    if (sf::Keyboard::isKeyPressed(sf::Keyboard::W))
         movement.y -= moveSpeed * dt.asSeconds();
-    if (sf::Keyboard::isKeyPressed(sf::Keyboard::Down))
+    if (sf::Keyboard::isKeyPressed(sf::Keyboard::S))
         movement.y += moveSpeed * dt.asSeconds();
-    if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left))
+    if (sf::Keyboard::isKeyPressed(sf::Keyboard::A))
         movement.x -= moveSpeed * dt.asSeconds();
-    if (sf::Keyboard::isKeyPressed(sf::Keyboard::Right))
+    if (sf::Keyboard::isKeyPressed(sf::Keyboard::D))
         movement.x += moveSpeed * dt.asSeconds();
     playerSprite.move(movement);
 
@@ -139,8 +149,7 @@ void Scene_Frogger::update(sf::Time dt)
             enemy.sprite.setPosition(winSize.x, enemy.sprite.getPosition().y);
         }
     }
-
-    // Update additional helper functions as needed.
+    sCollisions(dt);
     sMovement(dt);
     sCollisions(dt);
     //sUpdate(dt);
@@ -183,7 +192,6 @@ void Scene_Frogger::sRender() {
     // Draw the player.
     _game->window().draw(playerSprite);
 
-    // Optionally draw HUD elements.
     sf::Text scoreText("Score: 100", Assets::getInstance().getFont("main"), 20);
     scoreText.setPosition(10.f, 10.f);
     _game->window().draw(scoreText);
@@ -194,7 +202,6 @@ void Scene_Frogger::spawnEnemyCar(const sf::Vector2f& position, float speed)
 {
     EnemyCar car;
     car.sprite.setTexture(Assets::getInstance().getTexture("Entities"));
-    // Use the "car" animation sub-rectangle (adjust these values as needed)
     car.sprite.setTextureRect(sf::IntRect(220, 59, 35, 29));
     car.sprite.setPosition(position);
     car.speed = speed;
@@ -206,21 +213,16 @@ void Scene_Frogger::spawnLog(const sf::Vector2f& position, float speed)
 {
     Log log;
     log.sprite.setTexture(Assets::getInstance().getTexture("Entities"));
-    // For example, assume the log image is in the "tree2.png" area:
-    // Adjust the sub-rectangle to the correct coordinates for your log image.
     log.sprite.setTextureRect(sf::IntRect(30, 29, 195, 28));
     log.sprite.setPosition(position);
     log.speed = speed;
     logs.push_back(log);
 }
 
-// Spawn a river enemy (e.g., a crocodile).
 void Scene_Frogger::spawnRiverEnemy(const sf::Vector2f& position, float speed)
 {
     RiverEnemy enemy;
     enemy.sprite.setTexture(Assets::getInstance().getTexture("Entities"));
-    // Use the "croc" animation sub-rectangle.
-    // For example, choose between "croc (1)" and "croc (2)". Here we use "croc (1)".
     enemy.sprite.setTextureRect(sf::IntRect(1, 203, 102, 40));
     enemy.sprite.setPosition(position);
     enemy.speed = speed;
@@ -234,8 +236,61 @@ void Scene_Frogger::sMovement(sf::Time dt)
 
 void Scene_Frogger::sCollisions(sf::Time dt)
 {
+    bool collisionDetected = false;
 
+    // Check collision with enemy cars.
+    for (const auto& car : enemyCars)
+    {
+        if (playerSprite.getGlobalBounds().intersects(car.sprite.getGlobalBounds()))
+        {
+            std::cout << "Player collided with enemy car!" << std::endl;
+            collisionDetected = true;
+            break;
+        }
+    }
+
+    // Check collision with river enemies.
+    if (!collisionDetected) {
+        for (const auto& enemy : riverEnemies)
+        {
+            if (playerSprite.getGlobalBounds().intersects(enemy.sprite.getGlobalBounds()))
+            {
+                std::cout << "Player collided with river enemy!" << std::endl;
+                collisionDetected = true;
+                break;
+            }
+        }
+    }
+
+    // Check if the player is in the river area.
+    const sf::Vector2u winSize = _game->window().getSize();
+    float riverTop = winSize.y * 0.25f;   // Adjust as needed.
+    float riverBottom = winSize.y * 0.70f;
+    sf::FloatRect pBounds = playerSprite.getGlobalBounds();
+    float playerCenterY = pBounds.top + pBounds.height / 2.f;
+    if (!collisionDetected && playerCenterY >= riverTop && playerCenterY <= riverBottom)
+    {
+        std::cout << "Player is in the river!" << std::endl;
+        collisionDetected = true;
+    }
+
+    if (collisionDetected)
+    {
+        // Decrement lives.
+        m_lives--;
+        std::cout << "Lives remaining: " << m_lives << std::endl;
+        resetPlayer();
+
+        // If no lives remain, exit to menu.
+        if (m_lives <= 0)
+        {
+            std::cout << "No lives left. Exiting to menu." << std::endl;
+            _game->quitLevel(); // This changes the scene to the menu.
+            return;
+        }
+    }
 }
+
 
 //void Scene_Frogger::update(sf::Time dt)
 //{

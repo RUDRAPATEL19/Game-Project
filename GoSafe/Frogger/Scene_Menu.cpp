@@ -26,7 +26,7 @@ void Scene_Menu::init()
 	registerAction(sf::Keyboard::D, "PLAY");
 	registerAction(sf::Keyboard::Escape, "QUIT");
 
-	_title = "GEX Planes";
+	_title = "Go Safe!";
 	_menuStrings.push_back("Level 1");
 	_menuStrings.push_back("Level 2");
 	_menuStrings.push_back("Level 3");
@@ -50,40 +50,65 @@ void Scene_Menu::update(sf::Time dt)
 
 void Scene_Menu::sRender()
 {
+    _game->window().clear(sf::Color(10, 10, 40));
 
-	sf::View view = _game->window().getView();
-	view.setCenter(_game->window().getSize().x / 2.f, _game->window().getSize().y / 2.f);
-	_game->window().setView(view);
+    sf::Vector2u winSize = _game->window().getSize();
 
-	static const sf::Color selectedColor(120, 0, 0);
-	static const sf::Color normalColor(0, 0, 0);
+    sf::Text titleText;
+    titleText.setFont(Assets::getInstance().getFont("main"));
+    titleText.setString(_title); // _title is set during init, e.g., "GEX Planes"
+    titleText.setCharacterSize(64);
+    titleText.setFillColor(sf::Color::White);
 
-	static const sf::Color backgroundColor(122, 100, 255);
+    sf::FloatRect titleBounds = titleText.getLocalBounds();
+    titleText.setOrigin(titleBounds.left + titleBounds.width / 2.f, titleBounds.top + titleBounds.height / 2.f);
+    titleText.setPosition(winSize.x / 2.f, winSize.y * 0.2f);
 
+    sf::Text titleShadow = titleText;
+    titleShadow.setFillColor(sf::Color(0, 0, 0, 150));
+    titleShadow.setPosition(titleText.getPosition() + sf::Vector2f(3.f, 3.f));
+    _game->window().draw(titleShadow);
+    _game->window().draw(titleText);
 
-	sf::Text footer("UP: W    DOWN: S   PLAY:D    QUIT: ESC",
-		Assets::getInstance().getFont("main"), 20);
-	footer.setFillColor(normalColor);
-	footer.setPosition(32, 700);
+    float startY = winSize.y * 0.4f;
+    float optionSpacing = 80.f;
 
+    for (size_t i = 0; i < _menuStrings.size(); ++i)
+    {
+        sf::Text optionText;
+        optionText.setFont(Assets::getInstance().getFont("main"));
+        optionText.setString(_menuStrings.at(i));
+        optionText.setCharacterSize(48);
 
-	_menuText.setFillColor(normalColor);
-	_menuText.setString(_title);
-	_menuText.setPosition(10, 10);
-	_game->window().draw(_menuText);
+        if (i == _menuIndex)
+            optionText.setFillColor(sf::Color::Yellow);
+        else
+            optionText.setFillColor(sf::Color(200, 200, 200));
 
-	for (size_t i{ 0 }; i < _menuStrings.size(); ++i)
-	{
-		_menuText.setFillColor((i == _menuIndex ? selectedColor : normalColor));
-		_menuText.setPosition(32, 32 + (i + 1) * 96);
-		_menuText.setString(_menuStrings.at(i));
-		_game->window().draw(_menuText);
-	}
+        sf::FloatRect textBounds = optionText.getLocalBounds();
+        optionText.setOrigin(textBounds.left + textBounds.width / 2.f, textBounds.top + textBounds.height / 2.f);
+        optionText.setPosition(winSize.x / 2.f, startY + i * optionSpacing);
 
-	_game->window().draw(footer);
+        sf::Text optionShadow = optionText;
+        optionShadow.setFillColor(sf::Color(0, 0, 0, 150));
+        optionShadow.setPosition(optionText.getPosition() + sf::Vector2f(2.f, 2.f));
+        _game->window().draw(optionShadow);
 
+        _game->window().draw(optionText);
+    }
+
+    sf::Text footer;
+    footer.setFont(Assets::getInstance().getFont("main"));
+    footer.setString("UP: W    DOWN: S   PLAY: D    QUIT: ESC");
+    footer.setCharacterSize(20);
+    footer.setFillColor(sf::Color(180, 180, 180));
+    sf::FloatRect footerBounds = footer.getLocalBounds();
+    footer.setOrigin(footerBounds.left + footerBounds.width / 2.f, footerBounds.top + footerBounds.height / 2.f);
+    footer.setPosition(winSize.x / 2.f, winSize.y * 0.85f);
+    _game->window().draw(footer);
+
+    //_game->window().display();
 }
-
 
 
 void Scene_Menu::sDoAction(const Command& action)

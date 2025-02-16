@@ -23,7 +23,7 @@ void GameEngine::init(const std::string& path)
     loadConfigFromFile(path, width, height);
 
 
-    _window.create(sf::VideoMode(width, height), "GEX Planes");
+    _window.create(sf::VideoMode(width, height), "Go Safe");
 
     _statisticsText.setFont(Assets::getInstance().getFont("main"));
     _statisticsText.setPosition(15.0f, 5.0f);
@@ -87,9 +87,9 @@ std::shared_ptr<Scene> GameEngine::currentScene()
 
 void GameEngine::changeScene(const std::string& sceneName, std::shared_ptr<Scene> scene, bool endCurrentScene)
 {
-    if (endCurrentScene && _sceneMap.contains(_currentScene))
+    if (endCurrentScene)
     {
-        _sceneMap.erase(_currentScene);
+        _sceneMap.clear();
     }
 
     if (!_sceneMap.contains(sceneName))
@@ -97,7 +97,6 @@ void GameEngine::changeScene(const std::string& sceneName, std::shared_ptr<Scene
         _sceneMap[sceneName] = scene;
     }
 
-    // Set the new scene as the active scene
     _currentScene = sceneName;
 
     _window.clear();
@@ -140,8 +139,9 @@ void GameEngine::run()
 }
 
 void GameEngine::quitLevel() {
-	changeScene("MENU", nullptr, true);
+    changeScene("MENU", std::make_shared<Scene_Menu>(this), true);
 }
+
 
 void GameEngine::backLevel() {
 	changeScene("MENU", nullptr, false);

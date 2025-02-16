@@ -87,20 +87,25 @@ std::shared_ptr<Scene> GameEngine::currentScene()
 
 void GameEngine::changeScene(const std::string& sceneName, std::shared_ptr<Scene> scene, bool endCurrentScene)
 {
+    // If we need to end the current scene, erase it
+    if (endCurrentScene && _sceneMap.contains(_currentScene))
+    {
+        _sceneMap.erase(_currentScene);
+    }
 
+    // If the scene is not already in the map, add it
+    if (!_sceneMap.contains(sceneName))
+    {
+        _sceneMap[sceneName] = scene;
+    }
 
-	if (endCurrentScene) {
-		// remove scene from map
-		_sceneMap.erase(_currentScene);
-	}
+    // Set the new scene as the active scene
+    _currentScene = sceneName;
 
-	if (!_sceneMap.contains(sceneName)) {
-		// if scene not in map alrady put new one in
-		// otherwise use existing scene arleady in map
-		_sceneMap[sceneName] = scene;
-	}
-
-	_currentScene = sceneName;
+    // Prevent flickering: Clear and render the new scene immediately
+    _window.clear();
+    _sceneMap[_currentScene]->sRender();
+    _window.display();
 }
 
 

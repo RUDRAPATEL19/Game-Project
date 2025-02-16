@@ -4,8 +4,10 @@
 
 void Scene_Menu::onEnd()
 {
-	_game->window().close();
+	_menuStrings.clear();
+	_levelPaths.clear();
 }
+
 
 Scene_Menu::Scene_Menu(GameEngine* gameEngine)
 	: Scene(gameEngine)
@@ -15,14 +17,14 @@ Scene_Menu::Scene_Menu(GameEngine* gameEngine)
 
 
 
-void Scene_Menu:: init()
+void Scene_Menu::init()
 {
-    registerAction(sf::Keyboard::W,			"UP");
-    registerAction(sf::Keyboard::Up,		"UP");
-    registerAction(sf::Keyboard::S,			"DOWN");
-    registerAction(sf::Keyboard::Down,	 	"DOWN");
-	registerAction(sf::Keyboard::D,			"PLAY");
-	registerAction(sf::Keyboard::Escape,	"QUIT");
+	registerAction(sf::Keyboard::W, "UP");
+	registerAction(sf::Keyboard::Up, "UP");
+	registerAction(sf::Keyboard::S, "DOWN");
+	registerAction(sf::Keyboard::Down, "DOWN");
+	registerAction(sf::Keyboard::D, "PLAY");
+	registerAction(sf::Keyboard::Escape, "QUIT");
 
 	_title = "GEX Planes";
 	_menuStrings.push_back("Level 1");
@@ -48,7 +50,7 @@ void Scene_Menu::update(sf::Time dt)
 
 void Scene_Menu::sRender()
 {
-	 
+
 	sf::View view = _game->window().getView();
 	view.setCenter(_game->window().getSize().x / 2.f, _game->window().getSize().y / 2.f);
 	_game->window().setView(view);
@@ -59,7 +61,7 @@ void Scene_Menu::sRender()
 	static const sf::Color backgroundColor(122, 100, 255);
 
 
-	sf::Text footer("UP: W    DOWN: S   PLAY:D    QUIT: ESC", 
+	sf::Text footer("UP: W    DOWN: S   PLAY:D    QUIT: ESC",
 		Assets::getInstance().getFont("main"), 20);
 	footer.setFillColor(normalColor);
 	footer.setPosition(32, 700);
@@ -73,10 +75,10 @@ void Scene_Menu::sRender()
 	for (size_t i{ 0 }; i < _menuStrings.size(); ++i)
 	{
 		_menuText.setFillColor((i == _menuIndex ? selectedColor : normalColor));
-		_menuText.setPosition(32, 32 + (i+1) * 96);
+		_menuText.setPosition(32, 32 + (i + 1) * 96);
 		_menuText.setString(_menuStrings.at(i));
 		_game->window().draw(_menuText);
-	} 
+	}
 
 	_game->window().draw(footer);
 
@@ -98,15 +100,12 @@ void Scene_Menu::sDoAction(const Command& action)
 		}
 		else if (action.name() == "PLAY")
 		{
-			std::cout << "Starting game..." << std::endl;
-
-			_game->window().clear();
-
-			_game->changeScene("PLAY", std::make_shared<Scene_Frogger>(_game, _levelPaths[_menuIndex]));
+			std::cout << "Starting Game..." << std::endl;
+			_game->changeScene("PLAY", std::make_shared<Scene_Frogger>(_game, _levelPaths[_menuIndex]), true);
 		}
 		else if (action.name() == "QUIT")
 		{
-			onEnd();
+			_game->quit();
 		}
 	}
 }

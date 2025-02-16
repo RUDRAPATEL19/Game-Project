@@ -11,9 +11,19 @@
 #include "Scene.h"
 #include "GameEngine.h"
 
+struct EnemyCar {
+    std::string type;       // For example: "car", "raceCarL", etc.
+    float speed;            // Positive: moves right; negative: moves left.
+    Animation* animation;   // Pointer to the animation defined in your Assets.
+};
+
 class Scene_Frogger : public Scene {
 
 private:
+    sf::Sprite playerSprite;
+    std::vector<sf::Sprite> enemies;
+    sf::Sprite enemySprite;
+    std::vector<EnemyCar> enemyCars;
     sPtrEntt        m_player{ nullptr };
     sf::View        m_worldView;
     sf::FloatRect   m_worldBounds;
@@ -29,15 +39,14 @@ private:
     int             m_lives;
     int             m_reachGoal;
 
-    // 🟢 New: Background Image Variables
     sf::Texture     backgroundTexture;
     sf::Sprite      backgroundSprite;
 
-    // 🔹 Game Logic Functions
     void            sMovement(sf::Time dt);
-    void            sCollisions();
+    void            sCollisions(sf::Time dt);
     void            sUpdate(sf::Time dt);
     void            sAnimation(sf::Time dt);
+    void            spawnEnemyCar(const sf::Vector2f& position, float speed);
 
     void	        onEnd() override;
     void            playerMovement();
@@ -46,7 +55,6 @@ private:
     void	        registerActions();
     void            spawnPlayer(sf::Vector2f pos);
 
-    // 🔹 Spawning Game Objects
     void            spawnLane1();
     void            spawnLane2();
     void            spawnLane3();
@@ -64,16 +72,15 @@ private:
     void            killPlayer();
     void            updateScore();
 
-    // 🟢 New: Load Level and Background
     void            loadLevel(const std::string& path);
-    void            loadBackground(); // 🆕 Function to load background image
+    void            loadBackground();
 
     sf::FloatRect   getViewBounds();
 
 public:
     Scene_Frogger(GameEngine* gameEngine, const std::string& levelPath);
 
-    void init(const std::string& path); // Ensure initialization
+    void init(const std::string& path);
     void update(sf::Time dt) override;
     void sDoAction(const Command& action) override;
     void sRender() override;

@@ -12,9 +12,18 @@
 #include "GameEngine.h"
 
 struct EnemyCar {
-    std::string type;       // For example: "car", "raceCarL", etc.
-    float speed;            // Positive: moves right; negative: moves left.
-    Animation* animation;   // Pointer to the animation defined in your Assets.
+    sf::Sprite sprite;
+    float speed; // positive: moves right; negative: moves left
+};
+
+struct Log {
+    sf::Sprite sprite;
+    float speed;
+};
+
+struct RiverEnemy {
+    sf::Sprite sprite;
+    float speed;
 };
 
 class Scene_Frogger : public Scene {
@@ -23,7 +32,11 @@ private:
     sf::Sprite playerSprite;
     std::vector<sf::Sprite> enemies;
     sf::Sprite enemySprite;
+
     std::vector<EnemyCar> enemyCars;
+    std::vector<Log> logs;
+    std::vector<RiverEnemy> riverEnemies;
+
     sPtrEntt        m_player{ nullptr };
     sf::View        m_worldView;
     sf::FloatRect   m_worldBounds;
@@ -47,6 +60,8 @@ private:
     void            sUpdate(sf::Time dt);
     void            sAnimation(sf::Time dt);
     void            spawnEnemyCar(const sf::Vector2f& position, float speed);
+    void            spawnLog(const sf::Vector2f& position, float speed);
+    void            spawnRiverEnemy(const sf::Vector2f& position, float speed);
 
     void	        onEnd() override;
     void            playerMovement();

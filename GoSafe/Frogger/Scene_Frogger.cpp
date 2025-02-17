@@ -172,9 +172,7 @@ void Scene_Frogger::update(sf::Time dt)
         }
     }
 
-    // ============================================================
     // 4. Horizontal Movement (Always applied)
-    // ============================================================
     const float moveSpeed = 150.f;
     sf::Vector2f movement(0.f, 0.f);
     if (sf::Keyboard::isKeyPressed(sf::Keyboard::W))
@@ -237,14 +235,12 @@ void Scene_Frogger::update(sf::Time dt)
             {
                 foundLog = true;
                 currentLogIndex = i;
-                // Snap player's vertical position onto the log.
                 sf::FloatRect actualLogBounds = logs[i].sprite.getGlobalBounds();
                 sf::FloatRect playerBounds = playerSprite.getGlobalBounds();
                 float newY = actualLogBounds.top - playerBounds.height / 2.f;
                 sf::Vector2f pos = playerSprite.getPosition();
                 pos.y = newY;
                 playerSprite.setPosition(pos);
-                // Move player along with the log.
                 playerSprite.move(logs[i].speed * dt.asSeconds(), 0.f);
                 break;
             }
@@ -294,7 +290,6 @@ void Scene_Frogger::update(sf::Time dt)
     }
 
     // 8. Log Lost Check: If riding a log that goes off screen, the player dies.
-
     if (onLog && currentLogIndex >= 0)
     {
         sf::FloatRect logBounds = logs[currentLogIndex].sprite.getGlobalBounds();
@@ -406,7 +401,6 @@ void Scene_Frogger::sRender() {
     {
         powerUpText.setString("");
     }
-    // Position below the score.
     powerUpText.setPosition(10.f, 40.f);
     _game->window().draw(powerUpText);
 }
@@ -416,7 +410,7 @@ void Scene_Frogger::spawnPowerUp(const sf::Vector2f& position, float speed)
 {
     PowerUp pu;
     pu.sprite.setTexture(Assets::getInstance().getTexture("Entities"));
-    pu.sprite.setTextureRect(sf::IntRect(11, 1, 18, 21)); 
+    pu.sprite.setTextureRect(sf::IntRect(11, 1, 18, 21)); // Example values (e.g. using the "lives" sprite as placeholder)
     pu.sprite.setPosition(position);
     pu.speed = speed;
     pu.active = true;
@@ -441,9 +435,24 @@ void Scene_Frogger::spawnEnemyCar(const sf::Vector2f& position, float speed)
 {
     EnemyCar car;
     car.sprite.setTexture(Assets::getInstance().getTexture("Entities"));
-    car.sprite.setTextureRect(sf::IntRect(220, 59, 35, 29));
+
+    // Define five different car sub-rectangles.
+    // (These values are placeholders; replace them with your actual coordinates and sizes.)
+    sf::IntRect carRects[5] = {
+        sf::IntRect(221, 60, 35, 29),   // Car type 0
+        sf::IntRect(88, 125, 31, 31),   // Car type 2
+        sf::IntRect(0, 58, 60, 32),   // Car type 1
+        sf::IntRect(174, 163, 36, 30),   // Car type 3
+        sf::IntRect(104, 163, 35, 30)    // Car type 4
+    };
+
+    // Choose one of the five at random.
+    int carType = std::rand() % 5;
+    car.sprite.setTextureRect(carRects[carType]);
+
     car.sprite.setPosition(position);
     car.speed = speed;
+
     enemyCars.push_back(car);
 }
 
@@ -452,7 +461,7 @@ void Scene_Frogger::spawnLog(const sf::Vector2f& position, float speed)
 {
     Log log;
     log.sprite.setTexture(Assets::getInstance().getTexture("Entities"));
-    log.sprite.setTextureRect(sf::IntRect(30, 29, 195, 28));
+    log.sprite.setTextureRect(sf::IntRect(70, 29 , 160, 35));
     log.sprite.setPosition(position);
     log.speed = speed;
     logs.push_back(log);
@@ -462,7 +471,7 @@ void Scene_Frogger::spawnRiverEnemy(const sf::Vector2f& position, float speed)
 {
     RiverEnemy enemy;
     enemy.sprite.setTexture(Assets::getInstance().getTexture("Entities"));
-    enemy.sprite.setTextureRect(sf::IntRect(1, 203, 102, 40));
+    enemy.sprite.setTextureRect(sf::IntRect(10, 227, 83, 42));
     enemy.sprite.setPosition(position);
     enemy.speed = speed;
     riverEnemies.push_back(enemy);
@@ -503,7 +512,7 @@ void Scene_Frogger::sCollisions(sf::Time dt)
 
     if (collisionDetected)
     {
-        // Decrease lives.
+        // Decrement lives.
         m_lives--;
         std::cout << "Lives remaining: " << m_lives << std::endl;
         resetPlayer();
@@ -515,7 +524,7 @@ void Scene_Frogger::sCollisions(sf::Time dt)
         if (m_lives <= 0)
         {
             std::cout << "No lives left. Exiting to menu." << std::endl;
-            _game->quitLevel();
+            _game->quitLevel(); // This changes the scene to the menu.
             return;
         }
     }

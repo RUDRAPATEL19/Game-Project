@@ -14,13 +14,13 @@
 
 struct EnemyCar {
     sf::Sprite sprite;
-    float speed; // positive: moves right; negative: moves left
+    float speed;
 };
 
 struct PowerUp {
     sf::Sprite sprite;
-    float speed;    // If you want it to move (for now, it can be 0)
-    bool active;    // To track if it’s still available
+    float speed;
+    bool active;
 };
 
 
@@ -65,6 +65,13 @@ private:
     const float jumpSpeed = -350.f;
     const float gravity = 800.f;
     float groundY;
+
+    bool inRiverLockMode = false;
+    float riverLockTimer = 0.f;
+    const float riverLockDuration = 10.f;
+
+    float riverLogSpawnDelay = 2.f;
+    float riverLogSpawnTimer = 0.f;
 
     bool isHopping = false;
     float hopTimer = 0.f;

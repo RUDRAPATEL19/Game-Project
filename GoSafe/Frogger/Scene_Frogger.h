@@ -11,10 +11,18 @@
 #include "Scene.h"
 #include "GameEngine.h"
 
+
 struct EnemyCar {
     sf::Sprite sprite;
     float speed; // positive: moves right; negative: moves left
 };
+
+struct PowerUp {
+    sf::Sprite sprite;
+    float speed;    // If you want it to move (for now, it can be 0)
+    bool active;    // To track if it’s still available
+};
+
 
 struct Log {
     sf::Sprite sprite;
@@ -38,6 +46,8 @@ private:
     std::vector<Log> logs;
     std::vector<RiverEnemy> riverEnemies;
 
+    void spawnSafeRiver(const sf::Vector2f& position, float speed);
+
     sPtrEntt        m_player{ nullptr };
     sf::View        m_worldView;
     sf::FloatRect   m_worldBounds;
@@ -47,23 +57,25 @@ private:
     bool isJumping = false;
     float jumpTimer = 0.f;            
     const float jumpDuration = 0.4f;    
-    const float jumpHeight = 50.f;  
-    const float jumpForward = 50.f;
+    const float jumpHeight = 40.f;  
+    const float jumpForward = 70.f;
     sf::Vector2f jumpStartPosition;
     
     float verticalVelocity = 0.f;
     const float jumpSpeed = -350.f;
     const float gravity = 800.f;
-    float groundY = 0.f;
+    float groundY;
 
     bool isHopping = false;
     float hopTimer = 0.f;
     const float hopDuration = 0.4f;
     const float hopHeight = 30.f;
 
-    // New variables for log riding:
     bool onLog = false;           
     int currentLogIndex = -1;
+
+    std::vector<PowerUp> powerUps;
+    bool hasSafeRiver = false;
 
     bool			m_drawTextures{ true };
     bool			m_drawAABB{ false };
@@ -87,6 +99,14 @@ private:
     void            spawnLog(const sf::Vector2f& position, float speed);
     void            spawnRiverEnemy(const sf::Vector2f& position, float speed);
 
+    void            resetPlayer();
+    void            spawnPowerUp(const sf::Vector2f& position, float speed);
+    void            safeRiver();
+
+    float           safeRiverTimer = 0.f;        // Timer tracking how long the power-up remains active
+    const           float safeRiverDuration = 7.f; // Duration (in seconds) for which the power-up is available
+    float           safeRiverSpawnTimer = 0.f;  // Timer for spawning the power-up
+    float           safeRiverSpawnDelay = 0.f;  // Random delay between spawns (in seconds)
     void	        onEnd() override;
     void            playerMovement();
     void            adjustPlayerPosition();
@@ -107,7 +127,6 @@ private:
     void            spawnGoal();
     void            spawnLives();
 
-    void            resetPlayer();
     void            killPlayer();
     void            updateScore();
 

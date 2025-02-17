@@ -13,6 +13,8 @@ Scene_Frogger::Scene_Frogger(GameEngine* gameEngine, const std::string& levelPat
 
 void Scene_Frogger::init(const std::string& path)
 {
+    float groundY = 0.f;
+
     //  Player Sprite Initialization
     playerSprite.setTexture(Assets::getInstance().getTexture("Entities"));
     playerSprite.setTextureRect(sf::IntRect(217, 203, 39, 40));
@@ -22,6 +24,7 @@ void Scene_Frogger::init(const std::string& path)
     float playerX = winSize.x / 2.f;
     float playerY = winSize.y - playerBounds.height / 2.f;
     playerSprite.setPosition(playerX, playerY);
+    groundY = playerY; 
 
     //  Background Initialization 
     backgroundSprite.setTexture(Assets::getInstance().getTexture("Background"));
@@ -94,6 +97,8 @@ void Scene_Frogger::onEnd()
 }
 void Scene_Frogger::update(sf::Time dt)
 {
+
+
     // --- Player Movement (as before) ---
     const float moveSpeed = 150.f;
     sf::Vector2f movement(0.f, 0.f);
@@ -107,7 +112,34 @@ void Scene_Frogger::update(sf::Time dt)
         movement.x += moveSpeed * dt.asSeconds();
     playerSprite.move(movement);
 
-    // (Add player boundary checking code as before.)
+
+    playerSprite.move(movement);
+
+    if (!isJumping && sf::Keyboard::isKeyPressed(sf::Keyboard::Space))
+    {
+        isJumping = true;
+        verticalVelocity = jumpSpeed;  
+        jumpStartPosition = playerSprite.getPosition();  
+    }
+
+    if (isJumping)
+    {
+        verticalVelocity += gravity * dt.asSeconds();
+        playerSprite.move(0.f, verticalVelocity * dt.asSeconds());
+
+
+        if (playerSprite.getPosition().y >= jumpStartPosition.y)
+        {
+            sf::Vector2f pos = playerSprite.getPosition();
+            pos.y = jumpStartPosition.y;  
+            playerSprite.setPosition(pos);
+            isJumping = false;
+            verticalVelocity = 0.f;
+        }
+    }
+
+
+
 
     const sf::Vector2u winSize = _game->window().getSize();
 
@@ -263,16 +295,16 @@ void Scene_Frogger::sCollisions(sf::Time dt)
     }
 
     // Check if the player is in the river area.
-    const sf::Vector2u winSize = _game->window().getSize();
-    float riverTop = winSize.y * 0.25f;   // Adjust as needed.
-    float riverBottom = winSize.y * 0.70f;
-    sf::FloatRect pBounds = playerSprite.getGlobalBounds();
-    float playerCenterY = pBounds.top + pBounds.height / 2.f;
-    if (!collisionDetected && playerCenterY >= riverTop && playerCenterY <= riverBottom)
-    {
-        std::cout << "Player is in the river!" << std::endl;
-        collisionDetected = true;
-    }
+    //const sf::Vector2u winSize = _game->window().getSize();
+    //float riverTop = winSize.y * 0.35f;   // Adjust as needed.
+    //float riverBottom = winSize.y * 0.65f;
+    //sf::FloatRect pBounds = playerSprite.getGlobalBounds();
+    //float playerCenterY = pBounds.top + pBounds.height / 2.f;
+    //if (!collisionDetected && playerCenterY >= riverTop && playerCenterY <= riverBottom)
+    //{
+    //    std::cout << "Player is in the river!" << std::endl;
+    //    collisionDetected = true;
+    //}
 
     if (collisionDetected)
     {
@@ -280,6 +312,9 @@ void Scene_Frogger::sCollisions(sf::Time dt)
         m_lives--;
         std::cout << "Lives remaining: " << m_lives << std::endl;
         resetPlayer();
+
+        isJumping = false;
+        verticalVelocity = 0.f;
 
         // If no lives remain, exit to menu.
         if (m_lives <= 0)

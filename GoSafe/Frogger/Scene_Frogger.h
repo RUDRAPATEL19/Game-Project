@@ -42,6 +42,13 @@ private:
     sf::View        m_worldView;
     sf::FloatRect   m_worldBounds;
 
+    bool isJumping = false;
+    float verticalVelocity = 0.f;
+    const float jumpSpeed = -350.f;  
+    const float gravity = 800.f;  
+    float groundY = 0.f;
+    sf::Vector2f jumpStartPosition;
+
     bool			m_drawTextures{ true };
     bool			m_drawAABB{ false };
     bool			m_drawGrid{ false };

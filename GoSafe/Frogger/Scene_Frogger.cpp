@@ -143,17 +143,25 @@ void Scene_Frogger::update(sf::Time dt)
         }
     }
 
-    if (!isJumping) {
+    if (!isJumping)
+    {
         bool foundLog = false;
+        const float margin = 5.f; 
         for (int i = 0; i < logs.size(); ++i)
         {
-            if (playerSprite.getGlobalBounds().intersects(logs[i].sprite.getGlobalBounds()))
+            sf::FloatRect logBounds = logs[i].sprite.getGlobalBounds();
+            logBounds.left -= margin;
+            logBounds.top -= margin;
+            logBounds.width += 2 * margin;
+            logBounds.height += 2 * margin;
+
+            if (playerSprite.getGlobalBounds().intersects(logBounds))
             {
                 foundLog = true;
                 currentLogIndex = i;
-                sf::FloatRect logBounds = logs[i].sprite.getGlobalBounds();
+                sf::FloatRect actualLogBounds = logs[i].sprite.getGlobalBounds();
                 sf::FloatRect playerBounds = playerSprite.getGlobalBounds();
-                float newY = logBounds.top - playerBounds.height / 2.f;
+                float newY = actualLogBounds.top - playerBounds.height / 2.f;
                 sf::Vector2f pos = playerSprite.getPosition();
                 pos.y = newY;
                 playerSprite.setPosition(pos);
@@ -164,7 +172,6 @@ void Scene_Frogger::update(sf::Time dt)
         onLog = foundLog;
     }
 
-    // --- River Collision Check (Only when not jumping) ---
     if (!isJumping) {
         const sf::Vector2u winSize = _game->window().getSize();
         float riverTop = winSize.y * 0.30f;

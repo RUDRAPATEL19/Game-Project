@@ -42,12 +42,28 @@ private:
     sf::View        m_worldView;
     sf::FloatRect   m_worldBounds;
 
+    sf::Vector2f startPosition; 
+
     bool isJumping = false;
-    float verticalVelocity = 0.f;
-    const float jumpSpeed = -350.f;  
-    const float gravity = 800.f;  
-    float groundY = 0.f;
+    float jumpTimer = 0.f;            
+    const float jumpDuration = 0.4f;    
+    const float jumpHeight = 50.f;  
+    const float jumpForward = 50.f;
     sf::Vector2f jumpStartPosition;
+    
+    float verticalVelocity = 0.f;
+    const float jumpSpeed = -350.f;
+    const float gravity = 800.f;
+    float groundY = 0.f;
+
+    bool isHopping = false;
+    float hopTimer = 0.f;
+    const float hopDuration = 0.4f;
+    const float hopHeight = 30.f;
+
+    // New variables for log riding:
+    bool onLog = false;           
+    int currentLogIndex = -1;
 
     bool			m_drawTextures{ true };
     bool			m_drawAABB{ false };

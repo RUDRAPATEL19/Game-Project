@@ -24,6 +24,7 @@ void Scene_Frogger::init(const std::string& path)
     float playerX = winSize.x / 2.f;
     float playerY = winSize.y - playerBounds.height / 2.f;
     playerSprite.setPosition(playerX, playerY);
+    startPosition = playerSprite.getPosition();
     groundY = playerY; 
 
     //  Background Initialization 
@@ -64,11 +65,11 @@ void Scene_Frogger::init(const std::string& path)
 
 void Scene_Frogger::resetPlayer()
 {
-    const sf::Vector2u winSize = _game->window().getSize();
-    sf::FloatRect playerBounds = playerSprite.getLocalBounds();
-    float playerX = winSize.x / 2.f;
-    float playerY = winSize.y - playerBounds.height / 2.f;
-    playerSprite.setPosition(playerX, playerY);
+    playerSprite.setPosition(startPosition);
+    isJumping = false;
+    verticalVelocity = 0.f;
+    onLog = false;
+    currentLogIndex = -1;
 }
 
 
@@ -99,9 +100,10 @@ void Scene_Frogger::update(sf::Time dt)
 {
 
 
-    // --- Player Movement (as before) ---
+    const sf::Vector2u winSize = _game->window().getSize();
     const float moveSpeed = 150.f;
     sf::Vector2f movement(0.f, 0.f);
+
     if (sf::Keyboard::isKeyPressed(sf::Keyboard::W))
         movement.y -= moveSpeed * dt.asSeconds();
     if (sf::Keyboard::isKeyPressed(sf::Keyboard::S))
@@ -112,36 +114,75 @@ void Scene_Frogger::update(sf::Time dt)
         movement.x += moveSpeed * dt.asSeconds();
     playerSprite.move(movement);
 
-
-    playerSprite.move(movement);
-
     if (!isJumping && sf::Keyboard::isKeyPressed(sf::Keyboard::Space))
     {
         isJumping = true;
-        verticalVelocity = jumpSpeed;  
-        jumpStartPosition = playerSprite.getPosition();  
+        jumpTimer = 0.f;
+        jumpStartPosition = playerSprite.getPosition();
     }
 
     if (isJumping)
     {
-        verticalVelocity += gravity * dt.asSeconds();
-        playerSprite.move(0.f, verticalVelocity * dt.asSeconds());
+        jumpTimer += dt.asSeconds();
+        float fraction = jumpTimer / jumpDuration;
+        if (fraction > 1.f) fraction = 1.f;
 
+        float verticalArc = jumpHeight * sin(3.14159f * fraction);
 
-        if (playerSprite.getPosition().y >= jumpStartPosition.y)
+        float forwardOffset = jumpForward * fraction;
+
+        sf::Vector2f newPos = jumpStartPosition;
+        newPos.y = jumpStartPosition.y - forwardOffset - verticalArc;
+        playerSprite.setPosition(newPos);
+
+        if (jumpTimer >= jumpDuration)
         {
-            sf::Vector2f pos = playerSprite.getPosition();
-            pos.y = jumpStartPosition.y;  
-            playerSprite.setPosition(pos);
             isJumping = false;
-            verticalVelocity = 0.f;
+            newPos.y = jumpStartPosition.y - jumpForward;
+            playerSprite.setPosition(newPos);
+        }
+    }
+
+    if (!isJumping) {
+        bool foundLog = false;
+        for (int i = 0; i < logs.size(); ++i)
+        {
+            if (playerSprite.getGlobalBounds().intersects(logs[i].sprite.getGlobalBounds()))
+            {
+                foundLog = true;
+                currentLogIndex = i;
+                sf::FloatRect logBounds = logs[i].sprite.getGlobalBounds();
+                sf::FloatRect playerBounds = playerSprite.getGlobalBounds();
+                float newY = logBounds.top - playerBounds.height / 2.f;
+                sf::Vector2f pos = playerSprite.getPosition();
+                pos.y = newY;
+                playerSprite.setPosition(pos);
+                playerSprite.move(logs[i].speed * dt.asSeconds(), 0.f);
+                break;
+            }
+        }
+        onLog = foundLog;
+    }
+
+    // --- River Collision Check (Only when not jumping) ---
+    if (!isJumping) {
+        const sf::Vector2u winSize = _game->window().getSize();
+        float riverTop = winSize.y * 0.30f;
+        float riverBottom = winSize.y * 0.65f;
+        float playerCenterY = playerSprite.getGlobalBounds().top + playerSprite.getGlobalBounds().height / 2.f;
+
+        if (playerCenterY >= riverTop && playerCenterY <= riverBottom && !onLog)
+        {
+            std::cout << "Player in river without log! Dying." << std::endl;
+            m_lives--;
+            resetPlayer();
+            if (m_lives <= 0)
+                _game->quitLevel();
         }
     }
 
 
 
-
-    const sf::Vector2u winSize = _game->window().getSize();
 
     // --- Update Enemy Cars ---
     for (auto& car : enemyCars)
@@ -293,18 +334,6 @@ void Scene_Frogger::sCollisions(sf::Time dt)
             }
         }
     }
-
-    // Check if the player is in the river area.
-    //const sf::Vector2u winSize = _game->window().getSize();
-    //float riverTop = winSize.y * 0.35f;   // Adjust as needed.
-    //float riverBottom = winSize.y * 0.65f;
-    //sf::FloatRect pBounds = playerSprite.getGlobalBounds();
-    //float playerCenterY = pBounds.top + pBounds.height / 2.f;
-    //if (!collisionDetected && playerCenterY >= riverTop && playerCenterY <= riverBottom)
-    //{
-    //    std::cout << "Player is in the river!" << std::endl;
-    //    collisionDetected = true;
-    //}
 
     if (collisionDetected)
     {

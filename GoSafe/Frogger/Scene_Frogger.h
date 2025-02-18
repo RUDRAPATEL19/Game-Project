@@ -11,6 +11,7 @@
 #include "Scene.h"
 #include "GameEngine.h"
 
+enum class SignalState { Green, Yellow, Red };
 
 struct EnemyCar {
     sf::Sprite sprite;
@@ -24,20 +25,34 @@ struct PowerUp {
 };
 
 
-struct Log {
-    sf::Sprite sprite;
-    float speed;
-};
+
 
 struct RiverEnemy {
     sf::Sprite sprite;
     float speed;
 };
 
+struct Log {
+    sf::Sprite sprite;
+    float speed;
+};
+
+
+struct TrafficSignal {
+    sf::Sprite sprite;
+    SignalState state;
+    float stateDuration;  
+    float stateTimer = 0.f;
+    int sequenceOrder;     
+    bool activated = false;  
+};
+
+
+
 class Scene_Frogger : public Scene {
 
 private:
-
+    std::vector<TrafficSignal> trafficSignals;
     sf::Sprite playerSprite;
     std::vector<sf::Sprite> enemies;
     sf::Sprite enemySprite;
@@ -81,6 +96,10 @@ private:
     bool onLog = false;           
     int currentLogIndex = -1;
 
+    bool safePassageActivated = false;
+    float safePassageTimer = 0.f;
+    const float safePassageDuration = 3.f; // Safe passage lasts 3 seconds
+
     std::vector<PowerUp> powerUps;
     bool hasSafeRiver = false;
 
@@ -121,10 +140,9 @@ private:
     void	        registerActions();
     void            spawnPlayer(sf::Vector2f pos);
 
-    // In Scene_Frogger.h (private members)
-bool gameFinished = false;         // Flag to indicate the game is won
-int finishOption = 0;              // 0: Play Again, 1: Back to Menu
-// You can also store overlay texts if you wish, or simply build them in sRender().
+bool                gameFinished = false;        
+int                 finishOption = 0;             
+bool                puzzleCheckTriggered = false;
 
 
     void            killPlayer();
@@ -139,6 +157,7 @@ public:
     Scene_Frogger(GameEngine* gameEngine, const std::string& levelPath);
 
     void init(const std::string& path);
+    void initTrafficSignals();
     void update(sf::Time dt) override;
     void sDoAction(const Command& action) override;
     void sRender() override;

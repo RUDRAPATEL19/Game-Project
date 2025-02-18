@@ -7,6 +7,7 @@
 #include <memory>
 #include <cstdlib>
 #include <iostream>
+#include "MusicPlayer.h"
 
 
 GameEngine::GameEngine(const std::string& path)
@@ -22,6 +23,7 @@ void GameEngine::init(const std::string& path)
     unsigned int height;
     loadConfigFromFile(path, width, height);
 
+    MusicPlayer::getInstance().play("gameTheme");
 
     _window.create(sf::VideoMode(width, height), "Go Safe");
 

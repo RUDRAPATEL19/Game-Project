@@ -110,10 +110,10 @@ private:
     void            spawnPowerUp(const sf::Vector2f& position, float speed);
     void            safeRiver();
 
-    float           safeRiverTimer = 0.f;        // Timer tracking how long the power-up remains active
-    const           float safeRiverDuration = 7.f; // Duration (in seconds) for which the power-up is available
-    float           safeRiverSpawnTimer = 0.f;  // Timer for spawning the power-up
-    float           safeRiverSpawnDelay = 0.f;  // Random delay between spawns (in seconds)
+    float           safeRiverTimer = 0.f;        
+    const           float safeRiverDuration = 7.f;
+    float           safeRiverSpawnTimer = 0.f;
+    float           safeRiverSpawnDelay = 0.f;
     void	        onEnd() override;
     void            playerMovement();
     void            adjustPlayerPosition();
@@ -121,18 +121,11 @@ private:
     void	        registerActions();
     void            spawnPlayer(sf::Vector2f pos);
 
-    void            spawnLane1();
-    void            spawnLane2();
-    void            spawnLane3();
-    void            spawnLane4();
-    void            spawnLane5();
-    void            spawnLane6();
-    void            spawnLane7();
-    void            spawnLane8();
-    void            spawnLane9();
-    void            spawnLane10();
-    void            spawnGoal();
-    void            spawnLives();
+    // In Scene_Frogger.h (private members)
+bool gameFinished = false;         // Flag to indicate the game is won
+int finishOption = 0;              // 0: Play Again, 1: Back to Menu
+// You can also store overlay texts if you wish, or simply build them in sRender().
+
 
     void            killPlayer();
     void            updateScore();

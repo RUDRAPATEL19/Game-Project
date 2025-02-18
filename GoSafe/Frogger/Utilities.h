@@ -58,6 +58,10 @@ inline void displayBounds(const T& t) {
 }
 
 
+inline void centerOrigin(sf::Sprite& sprite) {
+    sf::FloatRect bounds = sprite.getLocalBounds();
+    sprite.setOrigin(bounds.left + bounds.width / 2.f, bounds.top + bounds.height / 2.f);
+}
 
 
 

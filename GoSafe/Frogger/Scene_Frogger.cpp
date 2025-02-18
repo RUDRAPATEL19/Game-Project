@@ -16,7 +16,7 @@ void Scene_Frogger::init(const std::string& path)
 
     //  Player Sprite Initialization
     playerSprite.setTexture(Assets::getInstance().getTexture("Entities"));
-    playerSprite.setTextureRect(sf::IntRect(217, 203, 39, 40));
+    playerSprite.setTextureRect(sf::IntRect(223, 201, 27, 41));
     sf::FloatRect playerBounds = playerSprite.getLocalBounds();
     playerSprite.setOrigin(playerBounds.width / 2.f, playerBounds.height / 2.f);
     const sf::Vector2u winSize = _game->window().getSize();
@@ -77,9 +77,6 @@ void Scene_Frogger::safeRiver()
 
 
 
-
-
-
 void Scene_Frogger::resetPlayer()
 {
     playerSprite.setPosition(startPosition);
@@ -118,6 +115,41 @@ void Scene_Frogger::onEnd()
 void Scene_Frogger::update(sf::Time dt)
 {
     const sf::Vector2u winSize = _game->window().getSize();
+
+
+    // Suppose reaching the top means player y is less than a threshold:
+    
+    if (!gameFinished && playerSprite.getPosition().y <= 5.f)
+    {
+        gameFinished = true;
+        finishOption = 0;
+        std::cout << "Game Finished: You Won!" << std::endl;
+    }
+
+    // If the game is finished, update option selection.
+    if (gameFinished)
+    {
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::W))
+            finishOption = 0;
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::S))
+            finishOption = 1;
+
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::D))
+        {
+            if (finishOption == 0)
+            {
+                std::cout << "Play Again selected!" << std::endl;
+                // Reset game state (or change scene to a new game)
+                _game->changeScene("PLAY", std::make_shared<Scene_Frogger>(_game, "../assets/level1.txt"), true);
+            }
+            else if (finishOption == 1)
+            {
+                std::cout << "Back to Menu selected!" << std::endl;
+                _game->changeScene("MENU", std::make_shared<Scene_Menu>(_game), true);
+            }
+        }
+        return;
+    }
 
     // --- Power-Up Spawn Check (Safe River) ---
     {
@@ -325,12 +357,19 @@ void Scene_Frogger::update(sf::Time dt)
     for (auto& enemy : riverEnemies)
     {
         enemy.sprite.move(enemy.speed * dt.asSeconds(), 0.f);
+
+        if (enemy.speed < 0)
+            enemy.sprite.setScale(-1.f, 1.f);
+        else
+            enemy.sprite.setScale(1.f, 1.f);
+
         sf::FloatRect enemyBounds = enemy.sprite.getGlobalBounds();
         if (enemy.speed > 0 && enemyBounds.left > winSize.x)
             enemy.sprite.setPosition(-enemyBounds.width, enemy.sprite.getPosition().y);
         else if (enemy.speed < 0 && (enemyBounds.left + enemyBounds.width) < 0)
             enemy.sprite.setPosition(winSize.x, enemy.sprite.getPosition().y);
     }
+
 
     sCollisions(dt);
     sMovement(dt);
@@ -403,6 +442,47 @@ void Scene_Frogger::sRender() {
     }
     powerUpText.setPosition(10.f, 40.f);
     _game->window().draw(powerUpText);
+
+    if (gameFinished)
+    {
+        // Draw a translucent dark rectangle over the game.
+        sf::RectangleShape overlay;
+        overlay.setSize(sf::Vector2f(_game->window().getSize().x, _game->window().getSize().y));
+        overlay.setFillColor(sf::Color(0, 0, 0, 150));  // Semi-transparent black
+        _game->window().draw(overlay);
+
+        // Draw "You Won!" text.
+        sf::Text winText("You Won!", Assets::getInstance().getFont("main"), 64);
+        winText.setFillColor(sf::Color::Yellow);
+        sf::FloatRect winBounds = winText.getLocalBounds();
+        winText.setOrigin(winBounds.left + winBounds.width / 2.f, winBounds.top + winBounds.height / 2.f);
+        winText.setPosition(_game->window().getSize().x / 2.f, _game->window().getSize().y * 0.3f);
+        _game->window().draw(winText);
+
+        // Draw the options.
+        std::string options;
+        if (finishOption == 0)
+            options = "> Play Again <\n  Back to Menu";
+        else
+            options = "  Play Again\n> Back to Menu <";
+        sf::Text optionText(options, Assets::getInstance().getFont("main"), 48);
+        optionText.setFillColor(sf::Color::White);
+        sf::FloatRect optBounds = optionText.getLocalBounds();
+        optionText.setOrigin(optBounds.left + optBounds.width / 2.f, optBounds.top + optBounds.height / 2.f);
+        optionText.setPosition(_game->window().getSize().x / 2.f, _game->window().getSize().y * 0.5f);
+        _game->window().draw(optionText);
+
+        // Draw instruction text.
+        sf::Text instructText("Use W/S to choose, D to select", Assets::getInstance().getFont("main"), 20);
+        instructText.setFillColor(sf::Color::White);
+        sf::FloatRect instrBounds = instructText.getLocalBounds();
+        instructText.setOrigin(instrBounds.left + instrBounds.width / 2.f, instrBounds.top + instrBounds.height / 2.f);
+        instructText.setPosition(_game->window().getSize().x / 2.f, _game->window().getSize().y * 0.8f);
+        _game->window().draw(instructText);
+    }
+
+    //_game->window().display();
+
 }
 
 
@@ -410,7 +490,7 @@ void Scene_Frogger::spawnPowerUp(const sf::Vector2f& position, float speed)
 {
     PowerUp pu;
     pu.sprite.setTexture(Assets::getInstance().getTexture("Entities"));
-    pu.sprite.setTextureRect(sf::IntRect(11, 1, 18, 21)); // Example values (e.g. using the "lives" sprite as placeholder)
+    pu.sprite.setTextureRect(sf::IntRect(19, 193, 35, 35));
     pu.sprite.setPosition(position);
     pu.speed = speed;
     pu.active = true;
@@ -421,7 +501,7 @@ void Scene_Frogger::spawnSafeRiver(const sf::Vector2f& position, float speed)
 {
     PowerUp pu;
     pu.sprite.setTexture(Assets::getInstance().getTexture("Entities"));
-    pu.sprite.setTextureRect(sf::IntRect(50, 1, 18, 21));
+    pu.sprite.setTextureRect(sf::IntRect(19, 193, 35, 35));
     pu.sprite.setPosition(position);
     pu.speed = speed;
     pu.active = true;
@@ -436,42 +516,57 @@ void Scene_Frogger::spawnEnemyCar(const sf::Vector2f& position, float speed)
     EnemyCar car;
     car.sprite.setTexture(Assets::getInstance().getTexture("Entities"));
 
-    // Define five different car sub-rectangles.
-    // (These values are placeholders; replace them with your actual coordinates and sizes.)
     sf::IntRect carRects[5] = {
-        sf::IntRect(221, 60, 35, 29),   // Car type 0
-        sf::IntRect(88, 125, 31, 31),   // Car type 2
-        sf::IntRect(0, 58, 60, 32),   // Car type 1
-        sf::IntRect(174, 163, 36, 30),   // Car type 3
-        sf::IntRect(104, 163, 35, 30)    // Car type 4
+        sf::IntRect(221, 60, 35, 29),
+        sf::IntRect(88, 125, 31, 31),
+        sf::IntRect(0, 58, 60, 32),
+        sf::IntRect(174, 163, 36, 30),
+        sf::IntRect(104, 163, 35, 30)
     };
-
-    // Choose one of the five at random.
     int carType = std::rand() % 5;
     car.sprite.setTextureRect(carRects[carType]);
 
+    sf::FloatRect bounds = car.sprite.getLocalBounds();
+    car.sprite.setOrigin(bounds.left + bounds.width / 2.f, bounds.top + bounds.height / 2.f);
+
     car.sprite.setPosition(position);
     car.speed = speed;
-
     enemyCars.push_back(car);
 }
 
 
+
 void Scene_Frogger::spawnLog(const sf::Vector2f& position, float speed)
 {
+    sf::IntRect logRect(70, 29, 160, 35);
+    const float margin = 10.f;
+
+    std::vector<sf::FloatRect> existingLogRects;
+    for (const auto& log : logs)
+    {
+        existingLogRects.push_back(log.sprite.getGlobalBounds());
+    }
+    sf::FloatRect newLogRect(0, 0, logRect.width, logRect.height);
+    
+
     Log log;
     log.sprite.setTexture(Assets::getInstance().getTexture("Entities"));
-    log.sprite.setTextureRect(sf::IntRect(70, 29 , 160, 35));
+    log.sprite.setTextureRect(logRect);
+    sf::FloatRect bounds = log.sprite.getLocalBounds();
+    log.sprite.setOrigin(bounds.width / 2.f, bounds.height / 2.f);
     log.sprite.setPosition(position);
     log.speed = speed;
     logs.push_back(log);
 }
+
 
 void Scene_Frogger::spawnRiverEnemy(const sf::Vector2f& position, float speed)
 {
     RiverEnemy enemy;
     enemy.sprite.setTexture(Assets::getInstance().getTexture("Entities"));
     enemy.sprite.setTextureRect(sf::IntRect(10, 227, 83, 42));
+    sf::FloatRect bounds = enemy.sprite.getLocalBounds();
+    enemy.sprite.setOrigin(bounds.left + bounds.width / 2.f, bounds.top + bounds.height / 2.f);
     enemy.sprite.setPosition(position);
     enemy.speed = speed;
     riverEnemies.push_back(enemy);
@@ -486,7 +581,6 @@ void Scene_Frogger::sCollisions(sf::Time dt)
 {
     bool collisionDetected = false;
 
-    // Check collision with enemy cars.
     for (const auto& car : enemyCars)
     {
         if (playerSprite.getGlobalBounds().intersects(car.sprite.getGlobalBounds()))

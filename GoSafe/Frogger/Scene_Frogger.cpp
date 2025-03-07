@@ -111,6 +111,8 @@ void Scene_Frogger::onEnd()
     std::cout << "Exiting Scene_Frogger..." << std::endl;
 }
 
+
+
 void cycleState(TrafficSignal& signal) {
     if (signal.state == SignalState::Green)
         signal.state = SignalState::Yellow;
@@ -133,25 +135,45 @@ void cycleState(TrafficSignal& signal) {
 
 
 void Scene_Frogger::initTrafficSignals() {
-    TrafficSignal signal;
-    signal.sprite.setTexture(Assets::getInstance().getTexture("Entities"));
-    signal.sprite.setTextureRect(sf::IntRect(127, 209, 41, 46));
+    TrafficSignal signal1;
+    signal1.sprite.setTexture(Assets::getInstance().getTexture("Entities"));
+    signal1.sprite.setTextureRect(sf::IntRect(127, 209, 41, 46));
 
-    sf::FloatRect bounds = signal.sprite.getLocalBounds();
-    signal.sprite.setOrigin(bounds.width / 2.f, bounds.height / 2.f);
+    sf::FloatRect bounds = signal1.sprite.getLocalBounds();
+    signal1.sprite.setOrigin(bounds.width / 2.f, bounds.height / 2.f);
 
-    signal.sprite.setColor(sf::Color::Magenta);
+    signal1.sprite.setColor(sf::Color::Magenta);
 
     const sf::Vector2u winSize = _game->window().getSize();
     float posX = 50.f;
     float posY = winSize.y * 0.805f;
-    signal.sprite.setPosition(posX, posY);
+    signal1.sprite.setPosition(posX, posY);
 
-    signal.state = SignalState::Green;
-    signal.sequenceOrder = 1;
-    signal.activated = false;
+    signal1.state = SignalState::Green;
+    signal1.sequenceOrder = 1;
+    signal1.activated = false;
 
-    trafficSignals.push_back(signal);
+    trafficSignals.push_back(signal1);
+
+
+    TrafficSignal signal2;
+    signal2.sprite.setTexture(Assets::getInstance().getTexture("Entities"));
+    signal2.sprite.setTextureRect(sf::IntRect(127, 209, 41, 46));
+
+    sf::FloatRect bounds2 = signal2.sprite.getLocalBounds();
+    signal2.sprite.setOrigin(bounds2.width / 2.f, bounds2.height / 2.f);
+
+    signal2.sprite.setColor(sf::Color::Magenta);
+
+    float posX1 = 150.f;
+    float posY1 = winSize.y * 0.805f;
+    signal2.sprite.setPosition(posX1, posY1);
+
+    signal2.state = SignalState::Green;
+    signal2.sequenceOrder = 2;
+    signal2.activated = false;
+
+    trafficSignals.push_back(signal2);
 }
 
 

@@ -165,7 +165,7 @@ void Scene_Frogger::initTrafficSignals() {
 
     signal2.sprite.setColor(sf::Color::Magenta);
 
-    float posX1 = 150.f;
+    float posX1 = 450.f;
     float posY1 = winSize.y * 0.805f;
     signal2.sprite.setPosition(posX1, posY1);
 
@@ -371,10 +371,10 @@ void Scene_Frogger::update(sf::Time dt)
         }
 
         // --- Check Puzzle Sequence Only When Player Submits ---
+        // --- Check Puzzle Sequence Only When Player Submits ---
         if (puzzleCheckTriggered && sf::Keyboard::isKeyPressed(sf::Keyboard::X))
         {
             std::cout << "X pressed: Checking signal states..." << std::endl;
-            // Assume we want all signals to be Red for safe passage.
             bool puzzleSolved = true;
             for (const auto& signal : trafficSignals)
             {
@@ -396,6 +396,7 @@ void Scene_Frogger::update(sf::Time dt)
             }
             puzzleCheckTriggered = false;
         }
+
 
         // 7. Safe Landing on Road Check
         float roadThreshold = winSize.y * 0.70f;
@@ -460,7 +461,7 @@ void Scene_Frogger::update(sf::Time dt)
                 std::cout << "Safe passage ended." << std::endl;
             }
         }
-        // --- Update Other Game Objects ---
+
         for (auto& car : enemyCars)
         {
             float speedMultiplier = safePassageActivated ? 0.0f : 1.0f; 
@@ -482,8 +483,7 @@ void Scene_Frogger::update(sf::Time dt)
         }
         for (auto& enemy : riverEnemies)
         {
-            float speedMultiplier = safePassageActivated ? 0.0f : 1.0f;
-            enemy.sprite.move(enemy.speed * speedMultiplier * dt.asSeconds(), 0.f);
+            enemy.sprite.move(enemy.speed * dt.asSeconds(), 0.f);
             if (enemy.speed < 0)
                 enemy.sprite.setScale(-1.f, 1.f);
             else

@@ -98,7 +98,7 @@ private:
 
     bool safePassageActivated = false;
     float safePassageTimer = 0.f;
-    const float safePassageDuration = 3.f; // Safe passage lasts 3 seconds
+    const float safePassageDuration = 5.f; // Safe passage lasts 3 seconds
 
     std::vector<PowerUp> powerUps;
     bool hasSafeRiver = false;

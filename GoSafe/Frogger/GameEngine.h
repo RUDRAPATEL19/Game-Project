@@ -2,7 +2,7 @@
 
 
 #include "Assets.h"
-
+#include <SFML/Graphics.hpp>
 #include <memory>
 #include <map>
 

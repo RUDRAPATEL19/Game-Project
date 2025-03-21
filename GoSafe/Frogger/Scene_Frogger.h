@@ -68,7 +68,8 @@ private:
     sf::FloatRect   m_worldBounds;
 
     sf::Vector2f startPosition; 
-
+    int gameOverOption = 0;
+    bool gameOver = false;
     bool isJumping = false;
     float jumpTimer = 0.f;            
     const float jumpDuration = 0.4f;    

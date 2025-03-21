@@ -183,8 +183,7 @@ void Scene_Frogger::update(sf::Time dt)
 {
     const sf::Vector2u winSize = _game->window().getSize();
 
-
-
+    // --- Win Condition Check (Game Finished) ---
     if (!gameFinished && playerSprite.getPosition().y <= 5.f)
     {
         gameFinished = true;
@@ -192,8 +191,10 @@ void Scene_Frogger::update(sf::Time dt)
         std::cout << "Game Finished: You Won!" << std::endl;
     }
 
+    // --- Process Finish Menu Input (When Game is Finished) ---
     if (gameFinished)
     {
+        // Process finish menu input (using finishOption)
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::W))
             finishOption = 0;
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::S))
@@ -212,8 +213,34 @@ void Scene_Frogger::update(sf::Time dt)
                 _game->changeScene("MENU", std::make_shared<Scene_Menu>(_game), true);
             }
         }
-        return;
+        return; // Skip normal update logic when game is finished.
     }
+
+    // --- Process Game Over Menu (if gameOver is true) ---
+    if (gameOver)
+    {
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::W))
+            gameOverOption = 0;
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::S))
+            gameOverOption = 1;
+
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::D))
+        {
+            if (gameOverOption == 0)
+            {
+                std::cout << "Play Again selected!" << std::endl;
+                _game->changeScene("PLAY", std::make_shared<Scene_Frogger>(_game, "../assets/level1.txt"), true);
+            }
+            else if (gameOverOption == 1)
+            {
+                std::cout << "Back to Menu selected!" << std::endl;
+                _game->changeScene("MENU", std::make_shared<Scene_Menu>(_game), true);
+            }
+        }
+        return; // Skip normal update logic.
+    }
+
+    // --- The rest of your normal update logic continues below ---
 
     // --- Power-Up Spawn Check (Safe River) ---
     {
@@ -224,8 +251,6 @@ void Scene_Frogger::update(sf::Time dt)
                 break;
             }
         }
-
-        // If none is active, update the spawn timer.
         if (!safeRiverActive)
         {
             safeRiverSpawnTimer += dt.asSeconds();
@@ -268,7 +293,7 @@ void Scene_Frogger::update(sf::Time dt)
         }
     }
 
-    // 4. Horizontal Movement (Always applied)
+    // --- Horizontal Movement (Always applied) ---
     const float moveSpeed = 150.f;
     sf::Vector2f movement(0.f, 0.f);
     if (sf::Keyboard::isKeyPressed(sf::Keyboard::W))
@@ -281,10 +306,7 @@ void Scene_Frogger::update(sf::Time dt)
         movement.x += moveSpeed * dt.asSeconds();
     playerSprite.move(movement);
 
-
-
-
-
+    // --- Traffic Signal Interaction ---
     for (auto& signal : trafficSignals)
     {
         if (playerSprite.getGlobalBounds().intersects(signal.sprite.getGlobalBounds()))
@@ -293,9 +315,9 @@ void Scene_Frogger::update(sf::Time dt)
             {
                 if (!signal.activated)
                 {
-                    cycleState(signal);  
+                    cycleState(signal);
                     signal.activated = true;
-                    puzzleCheckTriggered = true; 
+                    puzzleCheckTriggered = true;
                     std::cout << "Signal " << signal.sequenceOrder << " toggled." << std::endl;
                 }
             }
@@ -306,201 +328,195 @@ void Scene_Frogger::update(sf::Time dt)
         }
     }
 
-
-    
-        // 5. Jump Mechanic (Vertical jump only)
-
-        if (!isJumping && sf::Keyboard::isKeyPressed(sf::Keyboard::Space))
+    // --- Check Puzzle Sequence Only When Player Submits ---
+    if (puzzleCheckTriggered && sf::Keyboard::isKeyPressed(sf::Keyboard::X))
+    {
+        std::cout << "X pressed: Checking signal states..." << std::endl;
+        bool puzzleSolved = true;
+        for (const auto& signal : trafficSignals)
         {
-            isJumping = true;
-            jumpTimer = 0.f;
-            jumpStartPosition = playerSprite.getPosition();
-        }
-        if (isJumping)
-        {
-            jumpTimer += dt.asSeconds();
-            float fraction = jumpTimer / jumpDuration;
-            if (fraction > 1.f) fraction = 1.f;
-
-            float verticalArc = jumpHeight * sin(3.14159f * fraction);
-
-            float forwardOffset = jumpForward * fraction;
-
-            sf::Vector2f newPos = jumpStartPosition;
-            newPos.y = jumpStartPosition.y - forwardOffset - verticalArc;
-            playerSprite.setPosition(newPos);
-
-            if (jumpTimer >= jumpDuration)
+            if (signal.state != SignalState::Red)
             {
-                isJumping = false;
-                newPos.y = jumpStartPosition.y - jumpForward;
-                playerSprite.setPosition(newPos);
+                puzzleSolved = false;
+                break;
             }
         }
-
-        // LOG RIDING (Only when NOT jumping)
-
-        if (!isJumping)
+        if (puzzleSolved)
         {
-            bool foundLog = false;
-            const float margin = 5.f;
-            for (int i = 0; i < logs.size(); ++i)
-            {
-                sf::FloatRect logBounds = logs[i].sprite.getGlobalBounds();
-                // Expand the log bounds
-                logBounds.left -= margin;
-                logBounds.top -= margin;
-                logBounds.width += 2 * margin;
-                logBounds.height += 2 * margin;
-
-                if (playerSprite.getGlobalBounds().intersects(logBounds))
-                {
-                    foundLog = true;
-                    currentLogIndex = i;
-                    sf::FloatRect actualLogBounds = logs[i].sprite.getGlobalBounds();
-                    sf::FloatRect playerBounds = playerSprite.getGlobalBounds();
-                    float newY = actualLogBounds.top - playerBounds.height / 2.f;
-                    sf::Vector2f pos = playerSprite.getPosition();
-                    pos.y = newY;
-                    playerSprite.setPosition(pos);
-                    playerSprite.move(logs[i].speed * dt.asSeconds(), 0.f);
-                    break;
-                }
-            }
-            onLog = foundLog;
+            std::cout << "Correct sequence! Safe passage activated." << std::endl;
+            safePassageActivated = true;
+            safePassageTimer = 0.f;
         }
-
-        // --- Check Puzzle Sequence Only When Player Submits ---
-        // --- Check Puzzle Sequence Only When Player Submits ---
-        if (puzzleCheckTriggered && sf::Keyboard::isKeyPressed(sf::Keyboard::X))
+        else
         {
-            std::cout << "X pressed: Checking signal states..." << std::endl;
-            bool puzzleSolved = true;
-            for (const auto& signal : trafficSignals)
-            {
-                if (signal.state != SignalState::Red)
-                {
-                    puzzleSolved = false;
-                    break;
-                }
-            }
-            if (puzzleSolved)
-            {
-                std::cout << "Correct sequence! Safe passage activated." << std::endl;
-                safePassageActivated = true;
-                safePassageTimer = 0.f;
-            }
-            else
-            {
-                std::cout << "Incorrect sequence. Try again." << std::endl;
-            }
-            puzzleCheckTriggered = false;
+            std::cout << "Incorrect sequence. Try again." << std::endl;
         }
+        puzzleCheckTriggered = false;
+    }
 
+    // --- Jump Mechanic (Vertical jump only) ---
+    if (!isJumping && sf::Keyboard::isKeyPressed(sf::Keyboard::Space))
+    {
+        isJumping = true;
+        jumpTimer = 0.f;
+        jumpStartPosition = playerSprite.getPosition();
+    }
+    if (isJumping)
+    {
+        jumpTimer += dt.asSeconds();
+        float fraction = jumpTimer / jumpDuration;
+        if (fraction > 1.f) fraction = 1.f;
 
-        // 7. Safe Landing on Road Check
-        float roadThreshold = winSize.y * 0.70f;
-        if (onLog && playerSprite.getPosition().y >= roadThreshold)
+        float verticalArc = jumpHeight * sin(3.14159f * fraction);
+        float forwardOffset = jumpForward * fraction;
+
+        sf::Vector2f newPos = jumpStartPosition;
+        newPos.y = jumpStartPosition.y - forwardOffset - verticalArc;
+        playerSprite.setPosition(newPos);
+
+        if (jumpTimer >= jumpDuration)
         {
-            std::cout << "Safe landing on road from log jump!" << std::endl;
-            sf::Vector2f pos = playerSprite.getPosition();
-            pos.y = groundY;
-            playerSprite.setPosition(pos);
             isJumping = false;
-            verticalVelocity = 0.f;
-            onLog = false;
+            newPos.y = jumpStartPosition.y - jumpForward;
+            playerSprite.setPosition(newPos);
         }
+    }
 
+    // --- Log Riding (Only when NOT jumping) ---
+    if (!isJumping)
+    {
+        bool foundLog = false;
+        const float margin = 5.f;
+        for (int i = 0; i < logs.size(); ++i)
+        {
+            sf::FloatRect logBounds = logs[i].sprite.getGlobalBounds();
+            logBounds.left -= margin;
+            logBounds.top -= margin;
+            logBounds.width += 2 * margin;
+            logBounds.height += 2 * margin;
 
-        // --- River Collision Check (if not on log and not safe due to power-up) ---
-        if (!isJumping) {
-            float riverTop = winSize.y * 0.30f;
-            float riverBottom = winSize.y * 0.65f;
-            float playerCenterY = playerSprite.getGlobalBounds().top + playerSprite.getGlobalBounds().height / 2.f;
-
-            if (playerCenterY >= riverTop && playerCenterY <= riverBottom && !onLog)
+            if (playerSprite.getGlobalBounds().intersects(logBounds))
             {
-                if (hasSafeRiver && sf::Keyboard::isKeyPressed(sf::Keyboard::Z))
-                {
-                    std::cout << "Safe River power-up activated by Z!" << std::endl;
-                    safeRiver();
-                    hasSafeRiver = false;
-                    safeRiverTimer = 0.f;
-                }
-                else if (!hasSafeRiver)
-                {
-                    std::cout << "Player in river without log and no power-up! Dying." << std::endl;
-                    m_lives--;
-                    resetPlayer();
-                    if (m_lives <= 0)
-                        _game->quitLevel();
-                }
+                foundLog = true;
+                currentLogIndex = i;
+                sf::FloatRect actualLogBounds = logs[i].sprite.getGlobalBounds();
+                sf::FloatRect playerBounds = playerSprite.getGlobalBounds();
+                float newY = actualLogBounds.top - playerBounds.height / 2.f;
+                sf::Vector2f pos = playerSprite.getPosition();
+                pos.y = newY;
+                playerSprite.setPosition(pos);
+                playerSprite.move(logs[i].speed * dt.asSeconds(), 0.f);
+                break;
             }
         }
+        onLog = foundLog;
+    }
 
-        // 8. Log Lost Check: If riding a log that goes off screen, the player dies.
-        if (onLog && currentLogIndex >= 0)
+    // --- Safe Landing on Road Check ---
+    float roadThreshold = winSize.y * 0.70f;
+    if (onLog && playerSprite.getPosition().y >= roadThreshold)
+    {
+        std::cout << "Safe landing on road from log jump!" << std::endl;
+        sf::Vector2f pos = playerSprite.getPosition();
+        pos.y = groundY;
+        playerSprite.setPosition(pos);
+        isJumping = false;
+        verticalVelocity = 0.f;
+        onLog = false;
+    }
+
+    // --- River Collision Check (if not on log and not safe due to power-up) ---
+    if (!isJumping)
+    {
+        float riverTop = winSize.y * 0.30f;
+        float riverBottom = winSize.y * 0.65f;
+        float playerCenterY = playerSprite.getGlobalBounds().top + playerSprite.getGlobalBounds().height / 2.f;
+
+        if (playerCenterY >= riverTop && playerCenterY <= riverBottom && !onLog)
         {
-            sf::FloatRect logBounds = logs[currentLogIndex].sprite.getGlobalBounds();
-            if ((logBounds.left + logBounds.width < 0) || (logBounds.left > winSize.x))
+            if (hasSafeRiver && sf::Keyboard::isKeyPressed(sf::Keyboard::Z))
             {
-                std::cout << "Log lost! Player falls." << std::endl;
+                std::cout << "Safe River power-up activated by Z!" << std::endl;
+                safeRiver();
+                hasSafeRiver = false;
+                safeRiverTimer = 0.f;
+            }
+            else if (!hasSafeRiver)
+            {
+                std::cout << "Player in river without log and no power-up! Dying." << std::endl;
                 m_lives--;
                 resetPlayer();
                 if (m_lives <= 0)
                     _game->quitLevel();
             }
         }
-        if (safePassageActivated)
-        {
-            safePassageTimer += dt.asSeconds();
-            if (safePassageTimer >= safePassageDuration)
-            {
-                safePassageActivated = false;
-                safePassageTimer = 0.f;
-                std::cout << "Safe passage ended." << std::endl;
-            }
-        }
-
-        for (auto& car : enemyCars)
-        {
-            float speedMultiplier = safePassageActivated ? 0.0f : 1.0f; 
-            car.sprite.move(car.speed * speedMultiplier * dt.asSeconds(), 0.f);
-            sf::FloatRect carBounds = car.sprite.getGlobalBounds();
-            if (car.speed > 0 && carBounds.left > winSize.x)
-                car.sprite.setPosition(-carBounds.width, car.sprite.getPosition().y);
-            else if (car.speed < 0 && (carBounds.left + carBounds.width) < 0)
-                car.sprite.setPosition(winSize.x, car.sprite.getPosition().y);
-        }
-        for (auto& log : logs)
-        {
-            log.sprite.move(log.speed * dt.asSeconds(), 0.f);
-            sf::FloatRect logBounds = log.sprite.getGlobalBounds();
-            if (log.speed > 0 && logBounds.left > winSize.x)
-                log.sprite.setPosition(-logBounds.width, log.sprite.getPosition().y);
-            else if (log.speed < 0 && (logBounds.left + logBounds.width) < 0)
-                log.sprite.setPosition(winSize.x, log.sprite.getPosition().y);
-        }
-        for (auto& enemy : riverEnemies)
-        {
-            enemy.sprite.move(enemy.speed * dt.asSeconds(), 0.f);
-            if (enemy.speed < 0)
-                enemy.sprite.setScale(-1.f, 1.f);
-            else
-                enemy.sprite.setScale(1.f, 1.f);
-            sf::FloatRect enemyBounds = enemy.sprite.getGlobalBounds();
-            if (enemy.speed > 0 && enemyBounds.left > winSize.x)
-                enemy.sprite.setPosition(-enemyBounds.width, enemy.sprite.getPosition().y);
-            else if (enemy.speed < 0 && (enemyBounds.left + enemyBounds.width) < 0)
-                enemy.sprite.setPosition(winSize.x, enemy.sprite.getPosition().y);
-        }
-
-
-        sCollisions(dt);
-        sMovement(dt);
-        //sUpdate(dt);
-        sAnimation(dt);
     }
+
+    // --- Log Lost Check: If riding a log that goes off screen, the player dies. ---
+    if (onLog && currentLogIndex >= 0)
+    {
+        sf::FloatRect logBounds = logs[currentLogIndex].sprite.getGlobalBounds();
+        if ((logBounds.left + logBounds.width < 0) || (logBounds.left > winSize.x))
+        {
+            std::cout << "Log lost! Player falls." << std::endl;
+            m_lives--;
+            resetPlayer();
+            if (m_lives <= 0)
+                _game->quitLevel();
+        }
+    }
+
+    // --- Safe Passage Effect on Enemy Cars ---
+    if (safePassageActivated)
+    {
+        safePassageTimer += dt.asSeconds();
+        if (safePassageTimer >= safePassageDuration)
+        {
+            safePassageActivated = false;
+            safePassageTimer = 0.f;
+            std::cout << "Safe passage ended." << std::endl;
+        }
+    }
+    for (auto& car : enemyCars)
+    {
+        float speedMultiplier = safePassageActivated ? 0.0f : 1.0f;
+        car.sprite.move(car.speed * speedMultiplier * dt.asSeconds(), 0.f);
+        sf::FloatRect carBounds = car.sprite.getGlobalBounds();
+        if (car.speed > 0 && carBounds.left > winSize.x)
+            car.sprite.setPosition(-carBounds.width, car.sprite.getPosition().y);
+        else if (car.speed < 0 && (carBounds.left + carBounds.width) < 0)
+            car.sprite.setPosition(winSize.x, car.sprite.getPosition().y);
+    }
+    // --- Update Logs ---
+    for (auto& log : logs)
+    {
+        log.sprite.move(log.speed * dt.asSeconds(), 0.f);
+        sf::FloatRect logBounds = log.sprite.getGlobalBounds();
+        if (log.speed > 0 && logBounds.left > winSize.x)
+            log.sprite.setPosition(-logBounds.width, log.sprite.getPosition().y);
+        else if (log.speed < 0 && (logBounds.left + logBounds.width) < 0)
+            log.sprite.setPosition(winSize.x, log.sprite.getPosition().y);
+    }
+    // --- Update River Enemies (Unaffected by safe passage) ---
+    for (auto& enemy : riverEnemies)
+    {
+        float speedMultiplier = 1.0f;
+        enemy.sprite.move(enemy.speed * speedMultiplier * dt.asSeconds(), 0.f);
+        if (enemy.speed < 0)
+            enemy.sprite.setScale(-1.f, 1.f);
+        else
+            enemy.sprite.setScale(1.f, 1.f);
+        sf::FloatRect enemyBounds = enemy.sprite.getGlobalBounds();
+        if (enemy.speed > 0 && enemyBounds.left > winSize.x)
+            enemy.sprite.setPosition(-enemyBounds.width, enemy.sprite.getPosition().y);
+        else if (enemy.speed < 0 && (enemyBounds.left + enemyBounds.width) < 0)
+            enemy.sprite.setPosition(winSize.x, enemy.sprite.getPosition().y);
+    }
+
+    sCollisions(dt);
+    sMovement(dt);
+    sAnimation(dt);
+}
 
 
 void Scene_Frogger::sDoAction(const Command& action)
@@ -540,14 +556,13 @@ void Scene_Frogger::sRender() {
 
     // Draw power-ups.
     for (const auto& pu : powerUps) {
-        if (pu.active) { 
+        if (pu.active) {
             _game->window().draw(pu.sprite);
         }
     }
 
     // Draw traffic signals.
-    for (const auto& signal : trafficSignals)
-    {
+    for (const auto& signal : trafficSignals) {
         _game->window().draw(signal.sprite);
     }
 
@@ -556,45 +571,61 @@ void Scene_Frogger::sRender() {
     scoreText.setPosition(10.f, 10.f);
     _game->window().draw(scoreText);
 
-    // --- Draw Power-Up Status ---
+    // Draw Power-Up Status.
     sf::Text powerUpText;
     powerUpText.setFont(Assets::getInstance().getFont("main"));
     powerUpText.setCharacterSize(20);
     powerUpText.setFillColor(sf::Color::White);
-
-    if (hasSafeRiver)
-    {
+    if (hasSafeRiver) {
         int secondsRemaining = static_cast<int>(safeRiverDuration - safeRiverTimer);
         powerUpText.setString("Power-Up: Safe River (" + std::to_string(secondsRemaining) + "s)");
     }
-    else
-    {
+    else {
         powerUpText.setString("");
     }
     powerUpText.setPosition(10.f, 40.f);
     _game->window().draw(powerUpText);
 
-    if (gameFinished)
-    {
+    // Check if Game Over or Game Finished and draw overlay.
+    if (gameOver || gameFinished) {
+        // Draw a semi-transparent overlay.
         sf::RectangleShape overlay;
         overlay.setSize(sf::Vector2f(_game->window().getSize().x, _game->window().getSize().y));
-        overlay.setFillColor(sf::Color(0, 0, 0, 150));  
+        overlay.setFillColor(sf::Color(0, 0, 0, 150));
         _game->window().draw(overlay);
 
-        // Draw "You Won!" text.
-        sf::Text winText("You Won!", Assets::getInstance().getFont("main"), 64);
-        winText.setFillColor(sf::Color::Yellow);
-        sf::FloatRect winBounds = winText.getLocalBounds();
-        winText.setOrigin(winBounds.left + winBounds.width / 2.f, winBounds.top + winBounds.height / 2.f);
-        winText.setPosition(_game->window().getSize().x / 2.f, _game->window().getSize().y * 0.3f);
-        _game->window().draw(winText);
+        // Draw final message.
+        sf::Text finalText;
+        finalText.setFont(Assets::getInstance().getFont("main"));
+        finalText.setCharacterSize(64);
+        if (gameFinished) {
+            finalText.setString("You Won!");
+            finalText.setFillColor(sf::Color::Yellow);
+        }
+        else if (gameOver) {
+            finalText.setString("Game Over");
+            finalText.setFillColor(sf::Color::Red);
+        }
+        sf::FloatRect textBounds = finalText.getLocalBounds();
+        finalText.setOrigin(textBounds.left + textBounds.width / 2.f, textBounds.top + textBounds.height / 2.f);
+        finalText.setPosition(_game->window().getSize().x / 2.f, _game->window().getSize().y * 0.3f);
+        _game->window().draw(finalText);
 
-        // Draw the options.
+        // Draw options.
         std::string options;
-        if (finishOption == 0)
-            options = "> Play Again <\n  Back to Menu";
-        else
-            options = "  Play Again\n> Back to Menu <";
+        if (gameOver) {
+            if (gameOverOption == 0)
+                options = "> Play Again <\n  Back to Menu";
+            else
+                options = "  Play Again\n> Back to Menu <";
+        }
+        else {
+            // For game finished, similar option handling if needed.
+            if (finishOption == 0)
+                options = "> Play Again <\n  Back to Menu";
+            else
+                options = "  Play Again\n> Back to Menu <";
+        }
         sf::Text optionText(options, Assets::getInstance().getFont("main"), 48);
         optionText.setFillColor(sf::Color::White);
         sf::FloatRect optBounds = optionText.getLocalBounds();
@@ -602,7 +633,7 @@ void Scene_Frogger::sRender() {
         optionText.setPosition(_game->window().getSize().x / 2.f, _game->window().getSize().y * 0.5f);
         _game->window().draw(optionText);
 
-        // Draw instruction text.
+        // Draw instructions.
         sf::Text instructText("Use W/S to choose, D to select", Assets::getInstance().getFont("main"), 20);
         instructText.setFillColor(sf::Color::White);
         sf::FloatRect instrBounds = instructText.getLocalBounds();
@@ -611,14 +642,7 @@ void Scene_Frogger::sRender() {
         _game->window().draw(instructText);
     }
 
-    for (const auto& signal : trafficSignals)
-    {
-        _game->window().draw(signal.sprite);
-    }
-
-
     //_game->window().display();
-
 }
 
 
@@ -734,7 +758,6 @@ void Scene_Frogger::sCollisions(sf::Time dt)
 
     if (collisionDetected)
     {
-        // Decrement lives.
         m_lives--;
         std::cout << "Lives remaining: " << m_lives << std::endl;
         resetPlayer();
@@ -742,11 +765,11 @@ void Scene_Frogger::sCollisions(sf::Time dt)
         isJumping = false;
         verticalVelocity = 0.f;
 
-        // If no lives remain, exit to menu.
         if (m_lives <= 0)
         {
-            std::cout << "No lives left. Exiting to menu." << std::endl;
-            _game->quitLevel(); // This changes the scene to the menu.
+            std::cout << "No lives left. Game Over." << std::endl;
+            gameOver = true;
+            // Optionally, you could also stop certain timers or game actions here.
             return;
         }
     }

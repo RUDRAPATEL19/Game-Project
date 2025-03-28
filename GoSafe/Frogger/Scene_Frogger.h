@@ -77,6 +77,7 @@ private:
     const float jumpForward = 70.f;
     sf::Vector2f jumpStartPosition;
     
+
     float verticalVelocity = 0.f;
     const float jumpSpeed = -350.f;
     const float gravity = 800.f;

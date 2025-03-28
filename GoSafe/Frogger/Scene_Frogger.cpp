@@ -500,6 +500,7 @@ void Scene_Frogger::update(sf::Time dt)
     // --- Update River Enemies (Unaffected by safe passage) ---
     for (auto& enemy : riverEnemies)
     {
+
         float speedMultiplier = 1.0f;
         enemy.sprite.move(enemy.speed * speedMultiplier * dt.asSeconds(), 0.f);
         if (enemy.speed < 0)

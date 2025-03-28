@@ -107,7 +107,6 @@ private:
     bool			m_drawTextures{ true };
     bool			m_drawAABB{ false };
     bool			m_drawGrid{ false };
-
     sf::Text        m_text;
     sf::Time        m_timer;
     float           m_maxHeight;
@@ -117,7 +116,6 @@ private:
 
     sf::Texture     backgroundTexture;
     sf::Sprite      backgroundSprite;
-
     void            sMovement(sf::Time dt);
     void            sCollisions(sf::Time dt);
     void            sUpdate(sf::Time dt);

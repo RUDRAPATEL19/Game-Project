@@ -532,10 +532,8 @@ void Scene_Frogger::sDoAction(const Command& action)
 
 void Scene_Frogger::sRender() {
     _game->window().clear();
-
     // Draw the background.
     _game->window().draw(backgroundSprite);
-
     // Draw enemy cars.
     for (const auto& car : enemyCars) {
         _game->window().draw(car.sprite);

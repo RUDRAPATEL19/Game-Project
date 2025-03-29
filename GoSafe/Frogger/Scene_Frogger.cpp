@@ -1,6 +1,7 @@
 #include "Scene_Frogger.h"
 #include "Scene_Menu.h"  
 #include <cstdlib> 
+#include <cmath> 
 #include <iostream>
 
 Scene_Frogger::Scene_Frogger(GameEngine* gameEngine, const std::string& levelPath)
@@ -11,8 +12,12 @@ Scene_Frogger::Scene_Frogger(GameEngine* gameEngine, const std::string& levelPat
 
 
 
+
 void Scene_Frogger::init(const std::string& path)
 {
+    spawnDrone(sf::Vector2f(200.f, 200.f), 100.f);
+
+
     initTrafficSignals();
     //  Player Sprite Initialization
     playerSprite.setTexture(Assets::getInstance().getTexture("Entities"));
@@ -176,12 +181,107 @@ void Scene_Frogger::initTrafficSignals() {
     trafficSignals.push_back(signal2);
 }
 
+float distance(const sf::Vector2f& a, const sf::Vector2f& b) {
+    sf::Vector2f diff = a - b;
+    return std::sqrt(diff.x * diff.x + diff.y * diff.y);
+}
 
+void Scene_Frogger::handleDroneHit() {
+    m_lives--;
+    std::cout << "Lives remaining: " << m_lives << std::endl;
+    resetPlayer();
+    if (m_lives <= 0)
+        _game->quitLevel(); // Or set gameOver to true.
+}
+
+
+// Updates a drone’s behavior based on its state.
+void updateDrone(Drone& drone, sf::Time dt, const sf::Vector2u& winSize, const sf::Sprite& playerSprite, Scene_Frogger* scene) {
+    sf::Vector2f dronePos = drone.sprite.getPosition();
+    sf::Vector2f playerPos = playerSprite.getPosition();
+
+    // Compute the Euclidean distance between the drone and player.
+    float dx = playerPos.x - dronePos.x;
+    float dy = playerPos.y - dronePos.y;
+    float dist = std::sqrt(dx * dx + dy * dy);
+
+    // Define behavior thresholds and durations.
+    const float followThreshold = 100.f;  // When within 100 pixels, drone stops and charges.
+    const float chargeDuration = 2.f;
+    const float fireDuration = 2.f;
+    const float cooldownDuration = 1.f;
+
+    switch (drone.state)
+    {
+    case DroneState::Following:
+    {
+        // Move toward the player's position in both X and Y.
+        if (dist > followThreshold) {
+            sf::Vector2f direction = playerPos - dronePos;
+            if (dist != 0.f)
+                direction /= dist;  // Normalize
+            drone.sprite.move(direction * drone.speed * dt.asSeconds());
+        }
+        else {
+            // When close enough, transition to Charging.
+            drone.state = DroneState::Charging;
+            drone.stateTimer = 0.f;
+        }
+        break;
+    }
+    case DroneState::Charging:
+    {
+        // Stay still while charging.
+        drone.stateTimer += dt.asSeconds();
+        if (drone.stateTimer >= chargeDuration) {
+            drone.state = DroneState::Firing;
+            drone.stateTimer = 0.f;
+            // Initialize the laser hitbox:
+            drone.laserHitbox.setSize(sf::Vector2f(40.f, 200.f));  // width 40, height 200
+            drone.laserHitbox.setFillColor(sf::Color(255, 0, 0, 200)); // semi-transparent red
+            // Center the hitbox horizontally.
+            drone.laserHitbox.setOrigin(drone.laserHitbox.getSize().x / 2.f, 0.f);
+            drone.laserHitbox.setPosition(drone.sprite.getPosition());
+        }
+        break;
+    }
+    case DroneState::Firing:
+    {
+        // Remain stationary and show laser.
+        drone.stateTimer += dt.asSeconds();
+        drone.laserHitbox.setPosition(drone.sprite.getPosition());
+        // Check for collision between the player's sprite and the laser.
+        if (playerSprite.getGlobalBounds().intersects(drone.laserHitbox.getGlobalBounds())) {
+            std::cout << "Player hit by drone laser!" << std::endl;
+            scene->handleDroneHit();
+        }
+        if (drone.stateTimer >= fireDuration) {
+            drone.state = DroneState::Cooldown;
+            drone.stateTimer = 0.f;
+            // Hide the laser.
+            drone.laserHitbox.setFillColor(sf::Color::Transparent);
+        }
+        break;
+    }
+    case DroneState::Cooldown:
+    {
+        drone.stateTimer += dt.asSeconds();
+        if (drone.stateTimer >= cooldownDuration) {
+            drone.state = DroneState::Following;
+            drone.stateTimer = 0.f;
+        }
+        break;
+    }
+    }
+}
 
 
 void Scene_Frogger::update(sf::Time dt)
 {
     const sf::Vector2u winSize = _game->window().getSize();
+
+    
+
 
     // --- Win Condition Check (Game Finished) ---
     if (!gameFinished && playerSprite.getPosition().y <= 5.f)
@@ -479,14 +579,38 @@ void Scene_Frogger::update(sf::Time dt)
     }
     for (auto& car : enemyCars)
     {
-        float speedMultiplier = safePassageActivated ? 0.0f : 1.0f;
-        car.sprite.move(car.speed * speedMultiplier * dt.asSeconds(), 0.f);
+        // Calculate distance between enemy car and player.
+        float dist = distance(car.sprite.getPosition(), playerSprite.getPosition());
+
+        // If the player is too close (e.g., within 150 pixels), adjust behavior.
+        if (dist < 150.f)
+        {
+            // For example, slow down by setting a lower speed multiplier.
+            float speedMultiplier = 0.2f;
+            car.sprite.move(car.speed * speedMultiplier * dt.asSeconds(), 0.f);
+
+            // Optionally, you can change direction randomly:
+            // (For example, if the car's x position is to the left of the player, set a random positive speed,
+            //  or vice versa. This is just one idea.)
+            if (playerSprite.getPosition().x < car.sprite.getPosition().x)
+                car.speed = std::abs(car.speed) * -1.f; // reverse direction
+            else
+                car.speed = std::abs(car.speed);
+        }
+        else
+        {
+            // Normal movement when player is not close.
+            car.sprite.move(car.speed * dt.asSeconds(), 0.f);
+        }
+
+        // Wrapping logic (unchanged):
         sf::FloatRect carBounds = car.sprite.getGlobalBounds();
         if (car.speed > 0 && carBounds.left > winSize.x)
             car.sprite.setPosition(-carBounds.width, car.sprite.getPosition().y);
         else if (car.speed < 0 && (carBounds.left + carBounds.width) < 0)
             car.sprite.setPosition(winSize.x, car.sprite.getPosition().y);
     }
+
     // --- Update Logs ---
     for (auto& log : logs)
     {
@@ -512,6 +636,13 @@ void Scene_Frogger::update(sf::Time dt)
             enemy.sprite.setPosition(-enemyBounds.width, enemy.sprite.getPosition().y);
         else if (enemy.speed < 0 && (enemyBounds.left + enemyBounds.width) < 0)
             enemy.sprite.setPosition(winSize.x, enemy.sprite.getPosition().y);
+    }
+
+
+    // Update drones with unpredictable trajectories.
+    for (auto& drone : drones)
+    {
+        updateDrone(drone, dt, winSize, playerSprite, this);
     }
 
     sCollisions(dt);
@@ -564,6 +695,18 @@ void Scene_Frogger::sRender() {
     for (const auto& signal : trafficSignals) {
         _game->window().draw(signal.sprite);
     }
+
+	// Draw drones.
+    for (const auto& drone : drones)
+    {
+        _game->window().draw(drone.sprite);
+        if (drone.state == DroneState::Firing)
+        {
+            _game->window().draw(drone.laserHitbox);
+        }
+    }
+
+
 
     // Draw the score.
     sf::Text scoreText("Score: 100", Assets::getInstance().getFont("main"), 20);
@@ -722,6 +865,26 @@ void Scene_Frogger::spawnRiverEnemy(const sf::Vector2f& position, float speed)
     enemy.speed = speed;
     riverEnemies.push_back(enemy);
 }
+
+void Scene_Frogger::spawnDrone(const sf::Vector2f& position, float speed) {
+    Drone drone;
+    drone.sprite.setTexture(Assets::getInstance().getTexture("Entities"));
+    // Set a texture rectangle that represents your drone.
+    drone.sprite.setTextureRect(sf::IntRect(10, 227, 83, 42)); // Adjust these values!
+    // Center the drone’s origin.
+    sf::FloatRect bounds = drone.sprite.getLocalBounds();
+    drone.sprite.setOrigin(bounds.width / 2.f, bounds.height / 2.f);
+    drone.sprite.setPosition(position);
+    drone.speed = speed;
+    // Set an initial random target position (for testing, within window bounds)
+    const sf::Vector2u winSize = _game->window().getSize();
+    drone.targetPos.x = static_cast<float>(std::rand() % winSize.x);
+    drone.targetPos.y = static_cast<float>(std::rand() % winSize.y);
+
+    drones.push_back(drone);
+}
+
+
 
 void Scene_Frogger::sMovement(sf::Time dt)
 {

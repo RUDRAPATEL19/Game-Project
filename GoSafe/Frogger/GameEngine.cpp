@@ -19,17 +19,17 @@ GameEngine::GameEngine(const std::string& path)
 
 
 void GameEngine::init(const std::string& path)
-{
+{/*
     sf::VideoMode desktop = sf::VideoMode::getDesktopMode();
-    _window.create(desktop, "Go Safe", sf::Style::Default);
+    _window.create(desktop, "Go Safe", sf::Style::Default);*/
 
-    /*unsigned int width;
+    unsigned int width;
     unsigned int height;
-    loadConfigFromFile(path, width, height);*/
+    loadConfigFromFile(path, width, height);
 
     MusicPlayer::getInstance().play("gameTheme");
 
-    //_window.create(sf::VideoMode(width, height), "Go Safe");
+    _window.create(sf::VideoMode(width, height), "Go Safe");
 
     _statisticsText.setFont(Assets::getInstance().getFont("main"));
     _statisticsText.setPosition(15.0f, 5.0f);

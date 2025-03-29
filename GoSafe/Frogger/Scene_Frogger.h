@@ -12,6 +12,7 @@
 #include "GameEngine.h"
 
 enum class SignalState { Green, Yellow, Red };
+enum class DroneState { Following, Charging, Firing, Cooldown };
 
 struct EnemyCar {
     sf::Sprite sprite;
@@ -24,9 +25,6 @@ struct PowerUp {
     bool active;
 };
 
-
-
-
 struct RiverEnemy {
     sf::Sprite sprite;
     float speed;
@@ -37,7 +35,6 @@ struct Log {
     float speed;
 };
 
-
 struct TrafficSignal {
     sf::Sprite sprite;
     SignalState state;
@@ -47,11 +44,24 @@ struct TrafficSignal {
     bool activated = false;  
 };
 
+struct Drone {
+    sf::Sprite sprite;
+    sf::Vector2f targetPos;
+    float speed;
+    DroneState state = DroneState::Following;
+    float stateTimer = 0.f;
+    // You can add a laser hitbox if desired:
+    sf::RectangleShape laserHitbox; // optional, for visualization/collision
+};
+
+
+
 
 
 class Scene_Frogger : public Scene {
 
 private:
+    std::vector<Drone> drones;
     std::vector<TrafficSignal> trafficSignals;
     sf::Sprite playerSprite;
     std::vector<sf::Sprite> enemies;
@@ -112,7 +122,7 @@ private:
     sf::Time        m_timer;
     float           m_maxHeight;
     int             m_score;
-    int             m_lives;
+    
     int             m_reachGoal;
 
     sf::Texture     backgroundTexture;
@@ -125,7 +135,9 @@ private:
     void            spawnLog(const sf::Vector2f& position, float speed);
     void            spawnRiverEnemy(const sf::Vector2f& position, float speed);
 
-    void            resetPlayer();
+    void spawnDrone(const sf::Vector2f& position, float speed);
+
+    
     void            spawnPowerUp(const sf::Vector2f& position, float speed);
     void            safeRiver();
 
@@ -156,9 +168,13 @@ bool                puzzleCheckTriggered = false;
 public:
     Scene_Frogger(GameEngine* gameEngine, const std::string& levelPath);
 
+    int m_lives;
+    void resetPlayer();
+
     void init(const std::string& path);
     void initTrafficSignals();
     void update(sf::Time dt) override;
+    void handleDroneHit();
     void sDoAction(const Command& action) override;
     void sRender() override;
 };

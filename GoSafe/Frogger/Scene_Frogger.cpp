@@ -195,18 +195,15 @@ void Scene_Frogger::handleDroneHit() {
 }
 
 
-// Updates a drone’s behavior based on its state.
 void updateDrone(Drone& drone, sf::Time dt, const sf::Vector2u& winSize, const sf::Sprite& playerSprite, Scene_Frogger* scene) {
     sf::Vector2f dronePos = drone.sprite.getPosition();
     sf::Vector2f playerPos = playerSprite.getPosition();
 
-    // Compute the Euclidean distance between the drone and player.
     float dx = playerPos.x - dronePos.x;
     float dy = playerPos.y - dronePos.y;
     float dist = std::sqrt(dx * dx + dy * dy);
 
-    // Define behavior thresholds and durations.
-    const float followThreshold = 100.f;  // When within 100 pixels, drone stops and charges.
+    const float alignmentThreshold = 30.f;
     const float chargeDuration = 2.f;
     const float fireDuration = 2.f;
     const float cooldownDuration = 1.f;
@@ -215,31 +212,27 @@ void updateDrone(Drone& drone, sf::Time dt, const sf::Vector2u& winSize, const s
     {
     case DroneState::Following:
     {
-        // Move toward the player's position in both X and Y.
-        if (dist > followThreshold) {
-            sf::Vector2f direction = playerPos - dronePos;
-            if (dist != 0.f)
-                direction /= dist;  // Normalize
-            drone.sprite.move(direction * drone.speed * dt.asSeconds());
-        }
-        else {
-            // When close enough, transition to Charging.
+        if (std::abs(dx) <= alignmentThreshold && dronePos.y < playerPos.y) {
             drone.state = DroneState::Charging;
             drone.stateTimer = 0.f;
+        }
+        else {
+            if (dist != 0.f) {
+                sf::Vector2f direction = (playerPos - dronePos) / dist;
+                drone.sprite.move(direction * drone.speed * dt.asSeconds());
+            }
         }
         break;
     }
     case DroneState::Charging:
     {
-        // Stay still while charging.
         drone.stateTimer += dt.asSeconds();
         if (drone.stateTimer >= chargeDuration) {
             drone.state = DroneState::Firing;
             drone.stateTimer = 0.f;
-            // Initialize the laser hitbox:
-            drone.laserHitbox.setSize(sf::Vector2f(40.f, 200.f));  // width 40, height 200
-            drone.laserHitbox.setFillColor(sf::Color(255, 0, 0, 200)); // semi-transparent red
-            // Center the hitbox horizontally.
+            // Initialize laser hitbox:
+            drone.laserHitbox.setSize(sf::Vector2f(40.f, 200.f));
+            drone.laserHitbox.setFillColor(sf::Color(255, 0, 0, 200));
             drone.laserHitbox.setOrigin(drone.laserHitbox.getSize().x / 2.f, 0.f);
             drone.laserHitbox.setPosition(drone.sprite.getPosition());
         }
@@ -247,10 +240,8 @@ void updateDrone(Drone& drone, sf::Time dt, const sf::Vector2u& winSize, const s
     }
     case DroneState::Firing:
     {
-        // Remain stationary and show laser.
         drone.stateTimer += dt.asSeconds();
         drone.laserHitbox.setPosition(drone.sprite.getPosition());
-        // Check for collision between the player's sprite and the laser.
         if (playerSprite.getGlobalBounds().intersects(drone.laserHitbox.getGlobalBounds())) {
             std::cout << "Player hit by drone laser!" << std::endl;
             scene->handleDroneHit();
@@ -258,7 +249,6 @@ void updateDrone(Drone& drone, sf::Time dt, const sf::Vector2u& winSize, const s
         if (drone.stateTimer >= fireDuration) {
             drone.state = DroneState::Cooldown;
             drone.stateTimer = 0.f;
-            // Hide the laser.
             drone.laserHitbox.setFillColor(sf::Color::Transparent);
         }
         break;
@@ -337,10 +327,9 @@ void Scene_Frogger::update(sf::Time dt)
                 _game->changeScene("MENU", std::make_shared<Scene_Menu>(_game), true);
             }
         }
-        return; // Skip normal update logic.
+        return;
     }
 
-    // --- The rest of your normal update logic continues below ---
 
     // --- Power-Up Spawn Check (Safe River) ---
     {
@@ -579,31 +568,23 @@ void Scene_Frogger::update(sf::Time dt)
     }
     for (auto& car : enemyCars)
     {
-        // Calculate distance between enemy car and player.
         float dist = distance(car.sprite.getPosition(), playerSprite.getPosition());
 
-        // If the player is too close (e.g., within 150 pixels), adjust behavior.
         if (dist < 150.f)
         {
-            // For example, slow down by setting a lower speed multiplier.
             float speedMultiplier = 0.2f;
             car.sprite.move(car.speed * speedMultiplier * dt.asSeconds(), 0.f);
 
-            // Optionally, you can change direction randomly:
-            // (For example, if the car's x position is to the left of the player, set a random positive speed,
-            //  or vice versa. This is just one idea.)
             if (playerSprite.getPosition().x < car.sprite.getPosition().x)
-                car.speed = std::abs(car.speed) * -1.f; // reverse direction
+                car.speed = std::abs(car.speed) * -1.f;
             else
                 car.speed = std::abs(car.speed);
         }
         else
         {
-            // Normal movement when player is not close.
             car.sprite.move(car.speed * dt.asSeconds(), 0.f);
         }
 
-        // Wrapping logic (unchanged):
         sf::FloatRect carBounds = car.sprite.getGlobalBounds();
         if (car.speed > 0 && carBounds.left > winSize.x)
             car.sprite.setPosition(-carBounds.width, car.sprite.getPosition().y);

@@ -241,7 +241,9 @@ void updateDrone(Drone& drone, sf::Time dt, const sf::Vector2u& winSize, const s
     case DroneState::Firing:
     {
         drone.stateTimer += dt.asSeconds();
-        drone.laserHitbox.setPosition(drone.sprite.getPosition());
+        float laserOffsetY = 20.f;
+        drone.laserHitbox.setPosition(drone.sprite.getPosition().x,
+            drone.sprite.getPosition().y + laserOffsetY);
         if (playerSprite.getGlobalBounds().intersects(drone.laserHitbox.getGlobalBounds())) {
             std::cout << "Player hit by drone laser!" << std::endl;
             scene->handleDroneHit();
@@ -253,6 +255,7 @@ void updateDrone(Drone& drone, sf::Time dt, const sf::Vector2u& winSize, const s
         }
         break;
     }
+
     case DroneState::Cooldown:
     {
         drone.stateTimer += dt.asSeconds();
@@ -303,7 +306,7 @@ void Scene_Frogger::update(sf::Time dt)
                 _game->changeScene("MENU", std::make_shared<Scene_Menu>(_game), true);
             }
         }
-        return; // Skip normal update logic when game is finished.
+        return; 
     }
 
     // --- Process Game Over Menu (if gameOver is true) ---
@@ -568,22 +571,13 @@ void Scene_Frogger::update(sf::Time dt)
     }
     for (auto& car : enemyCars)
     {
-        float dist = distance(car.sprite.getPosition(), playerSprite.getPosition());
+        float dx = car.sprite.getPosition().x - playerSprite.getPosition().x;
+        float dy = car.sprite.getPosition().y - playerSprite.getPosition().y;
+        float dist = std::sqrt(dx * dx + dy * dy);
 
-        if (dist < 150.f)
-        {
-            float speedMultiplier = 0.2f;
-            car.sprite.move(car.speed * speedMultiplier * dt.asSeconds(), 0.f);
+        float speedMultiplier = (dist < 150.f) ? 0.2f : 1.0f;
 
-            if (playerSprite.getPosition().x < car.sprite.getPosition().x)
-                car.speed = std::abs(car.speed) * -1.f;
-            else
-                car.speed = std::abs(car.speed);
-        }
-        else
-        {
-            car.sprite.move(car.speed * dt.asSeconds(), 0.f);
-        }
+        car.sprite.move(car.speed * speedMultiplier * dt.asSeconds(), 0.f);
 
         sf::FloatRect carBounds = car.sprite.getGlobalBounds();
         if (car.speed > 0 && carBounds.left > winSize.x)
@@ -591,6 +585,7 @@ void Scene_Frogger::update(sf::Time dt)
         else if (car.speed < 0 && (carBounds.left + carBounds.width) < 0)
             car.sprite.setPosition(winSize.x, car.sprite.getPosition().y);
     }
+
 
     // --- Update Logs ---
     for (auto& log : logs)
@@ -620,7 +615,6 @@ void Scene_Frogger::update(sf::Time dt)
     }
 
 
-    // Update drones with unpredictable trajectories.
     for (auto& drone : drones)
     {
         updateDrone(drone, dt, winSize, playerSprite, this);
@@ -851,7 +845,7 @@ void Scene_Frogger::spawnDrone(const sf::Vector2f& position, float speed) {
     Drone drone;
     drone.sprite.setTexture(Assets::getInstance().getTexture("Entities"));
     // Set a texture rectangle that represents your drone.
-    drone.sprite.setTextureRect(sf::IntRect(10, 227, 83, 42)); // Adjust these values!
+    drone.sprite.setTextureRect(sf::IntRect(60, 193, 65, 35));
     // Center the drone’s origin.
     sf::FloatRect bounds = drone.sprite.getLocalBounds();
     drone.sprite.setOrigin(bounds.width / 2.f, bounds.height / 2.f);
@@ -886,7 +880,6 @@ void Scene_Frogger::sCollisions(sf::Time dt)
         }
     }
 
-    // Check collision with river enemies.
     if (!collisionDetected) {
         for (const auto& enemy : riverEnemies)
         {
@@ -912,7 +905,6 @@ void Scene_Frogger::sCollisions(sf::Time dt)
         {
             std::cout << "No lives left. Game Over." << std::endl;
             gameOver = true;
-            // Optionally, you could also stop certain timers or game actions here.
             return;
         }
     }

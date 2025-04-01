@@ -160,25 +160,6 @@ void Scene_Frogger::initTrafficSignals() {
 
     trafficSignals.push_back(signal1);
 
-
-    TrafficSignal signal2;
-    signal2.sprite.setTexture(Assets::getInstance().getTexture("Entities"));
-    signal2.sprite.setTextureRect(sf::IntRect(127, 209, 41, 46));
-
-    sf::FloatRect bounds2 = signal2.sprite.getLocalBounds();
-    signal2.sprite.setOrigin(bounds2.width / 2.f, bounds2.height / 2.f);
-
-    signal2.sprite.setColor(sf::Color::Magenta);
-
-    float posX1 = 450.f;
-    float posY1 = winSize.y * 0.805f;
-    signal2.sprite.setPosition(posX1, posY1);
-
-    signal2.state = SignalState::Green;
-    signal2.sequenceOrder = 2;
-    signal2.activated = false;
-
-    trafficSignals.push_back(signal2);
 }
 
 float distance(const sf::Vector2f& a, const sf::Vector2f& b) {
@@ -419,12 +400,14 @@ void Scene_Frogger::update(sf::Time dt)
             }
         }
     }
+    
 
     // --- Check Puzzle Sequence Only When Player Submits ---
     if (puzzleCheckTriggered && sf::Keyboard::isKeyPressed(sf::Keyboard::X))
     {
-        std::cout << "X pressed: Checking signal states..." << std::endl;
+        std::cout << "X pressed: Checking signal state..." << std::endl;
         bool puzzleSolved = true;
+        // Loop over the single signal.
         for (const auto& signal : trafficSignals)
         {
             if (signal.state != SignalState::Red)
@@ -445,6 +428,9 @@ void Scene_Frogger::update(sf::Time dt)
         }
         puzzleCheckTriggered = false;
     }
+
+
+
 
     // --- Jump Mechanic (Vertical jump only) ---
     if (!isJumping && sf::Keyboard::isKeyPressed(sf::Keyboard::Space))
@@ -569,13 +555,15 @@ void Scene_Frogger::update(sf::Time dt)
             std::cout << "Safe passage ended." << std::endl;
         }
     }
+
     for (auto& car : enemyCars)
     {
         float dx = car.sprite.getPosition().x - playerSprite.getPosition().x;
         float dy = car.sprite.getPosition().y - playerSprite.getPosition().y;
         float dist = std::sqrt(dx * dx + dy * dy);
 
-        float speedMultiplier = (dist < 150.f) ? 0.2f : 1.0f;
+        // If safe passage is active, stop cars completely; otherwise, slow them if close.
+        float speedMultiplier = safePassageActivated ? 0.0f : ((dist < 150.f) ? 0.2f : 1.0f);
 
         car.sprite.move(car.speed * speedMultiplier * dt.asSeconds(), 0.f);
 
@@ -585,6 +573,7 @@ void Scene_Frogger::update(sf::Time dt)
         else if (car.speed < 0 && (carBounds.left + carBounds.width) < 0)
             car.sprite.setPosition(winSize.x, car.sprite.getPosition().y);
     }
+
 
 
     // --- Update Logs ---
@@ -680,6 +669,23 @@ void Scene_Frogger::sRender() {
             _game->window().draw(drone.laserHitbox);
         }
     }
+
+    // After drawing all game elements, get hover message:
+    std::string hoverMessage = getHoverMessage();
+    if (!hoverMessage.empty()) {
+        sf::Text hoverText;
+        hoverText.setFont(Assets::getInstance().getFont("main"));
+        hoverText.setCharacterSize(24);
+        hoverText.setFillColor(sf::Color::Cyan);
+        hoverText.setOutlineColor(sf::Color::Black);
+        hoverText.setOutlineThickness(1.f);
+        hoverText.setString(hoverMessage);
+
+        hoverText.setPosition(20.f, _game->window().getSize().y - 60.f);
+
+        _game->window().draw(hoverText);
+    }
+
 
 
 
@@ -858,6 +864,59 @@ void Scene_Frogger::spawnDrone(const sf::Vector2f& position, float speed) {
 
     drones.push_back(drone);
 }
+
+std::string Scene_Frogger::getHoverMessage() {
+    // Get the current mouse position relative to the window.
+    sf::Vector2i mousePixelPos = sf::Mouse::getPosition(_game->window());
+    // Convert it to world coordinates.
+    sf::Vector2f mousePos = _game->window().mapPixelToCoords(mousePixelPos);
+
+    // Check if the mouse is over a traffic signal.
+    for (const auto& signal : trafficSignals) {
+        if (signal.sprite.getGlobalBounds().contains(mousePos)) {
+            return "Traffic Signal: Press E to toggle. When red, press X for safe passage.";
+        }
+    }
+
+    // Check if the mouse is over an enemy car.
+    for (const auto& car : enemyCars) {
+        if (car.sprite.getGlobalBounds().contains(mousePos)) {
+            return "Enemy Car: Avoid these moving vehicles!";
+        }
+    }
+
+    // Check if the mouse is over a log.
+    for (const auto& log : logs) {
+        if (log.sprite.getGlobalBounds().contains(mousePos)) {
+            return "Log: Ride these to cross the river safely.";
+        }
+    }
+
+    // Check if the mouse is over a river enemy.
+    for (const auto& enemy : riverEnemies) {
+        if (enemy.sprite.getGlobalBounds().contains(mousePos)) {
+            return "River Enemy: Beware of these obstacles in the water.";
+        }
+    }
+
+    // Check if the mouse is over a drone (if you have drones).
+    for (const auto& drone : drones) {
+        if (drone.sprite.getGlobalBounds().contains(mousePos)) {
+            return "Drone: Stay clear of its laser attack!";
+        }
+    }
+
+    // Check if the mouse is over a power-up.
+    for (const auto& pu : powerUps) {
+        if (pu.active && pu.sprite.getGlobalBounds().contains(mousePos)) {
+            return "Power-Up: Collect this for a safe river crossing.";
+        }
+    }
+
+    // No interactive element is being hovered over.
+    return "";
+}
+
 
 
 

@@ -171,6 +171,8 @@ public:
     int m_lives;
     void resetPlayer();
 
+    std::string getHoverMessage();
+
     void init(const std::string& path);
     void initTrafficSignals();
     void update(sf::Time dt) override;

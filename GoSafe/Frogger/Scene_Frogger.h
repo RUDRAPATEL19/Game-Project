@@ -13,6 +13,7 @@
 
 enum class SignalState { Green, Yellow, Red };
 enum class DroneState { Following, Charging, Firing, Cooldown };
+enum class PlayerAnimState { Walking, Jumping, Dying };
 
 struct EnemyCar {
     sf::Sprite sprite;
@@ -51,7 +52,7 @@ struct Drone {
     DroneState state = DroneState::Following;
     float stateTimer = 0.f;
     // You can add a laser hitbox if desired:
-    sf::RectangleShape laserHitbox; // optional, for visualization/collision
+    sf::RectangleShape laserHitbox;
 };
 
 
@@ -71,6 +72,10 @@ private:
     std::vector<Log> logs;
     std::vector<RiverEnemy> riverEnemies;
 
+    bool isLaneClearForEnemyCar(float laneY, float spawnX, float clearance);
+    bool isLaneClearForLog(float laneY, float spawnX, float clearance);
+    bool isLaneClearForRiverEnemy(float laneY, float spawnX, float clearance);
+
     void spawnSafeRiver(const sf::Vector2f& position, float speed);
 
     sPtrEntt        m_player{ nullptr };
@@ -83,8 +88,8 @@ private:
     bool isJumping = false;
     float jumpTimer = 0.f;            
     const float jumpDuration = 0.4f;    
-    const float jumpHeight = 40.f;  
-    const float jumpForward = 70.f;
+    const float jumpHeight = 70.f;  
+    const float jumpForward = 140.f;
     sf::Vector2f jumpStartPosition;
     
 
@@ -167,6 +172,22 @@ bool                puzzleCheckTriggered = false;
 
 public:
     Scene_Frogger(GameEngine* gameEngine, const std::string& levelPath);
+
+    PlayerAnimState m_playerAnimState = PlayerAnimState::Walking; // default state
+    float m_animTimer = 0.f;          // used for dying animation
+    int m_dyingFrameIndex = 0;        // Index for the dying animation frame
+    float m_dyingTotalTime = 0.f; // Total time elapsed in dying state
+    bool m_playerIsHit = false;
+
+    static const sf::Vector2f SAFE_RIVER_SCALE;
+    static const sf::Vector2f RIVER_ENEMY_SCALE;
+
+    unsigned int designWidth = 2560;
+    unsigned int designHeight = 1600;
+    float scaleFactorX = 2560.f / 480.f; // approx 5.33
+    float scaleFactorY = 1600.f / 600.f; // approx 2.67
+
+
 
     int m_lives;
     void resetPlayer();

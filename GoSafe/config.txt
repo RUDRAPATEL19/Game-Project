@@ -13,6 +13,8 @@ Music missionTheme      ../assets/Music/gosafe.WAV
 Texture Background      ../assets/Textures/background01.png
 Texture Title           ../assets/Textures/FroggerAtlas.png
 Texture Entities        ../assets/Textures/FroggerAtlas.png
+Texture goSafe			../assets/Textures/goSafe.png
+
 
 # Sprites
 Sprite Background       Background   0 0  480 600

@@ -1,7 +1,4 @@
-﻿//
-// Created by David Burchill on 2023-09-27.
-//
-
+﻿
 #pragma once
 
 #include <SFML/System/Time.hpp>
@@ -88,8 +85,8 @@ private:
     bool isJumping = false;
     float jumpTimer = 0.f;            
     const float jumpDuration = 0.4f;    
-    const float jumpHeight = 70.f;  
-    const float jumpForward = 140.f;
+    const float jumpHeight = 80.f;  
+    const float jumpForward = 150.f;
     sf::Vector2f jumpStartPosition;
     
 
@@ -134,7 +131,7 @@ private:
     sf::Sprite      backgroundSprite;
     void            sMovement(sf::Time dt);
     void            sCollisions(sf::Time dt);
-    void            sUpdate(sf::Time dt);
+    //void            sUpdate(sf::Time dt);
     void            sAnimation(sf::Time dt);
     void            spawnEnemyCar(const sf::Vector2f& position, float speed);
     void            spawnLog(const sf::Vector2f& position, float speed);
@@ -151,11 +148,11 @@ private:
     float           safeRiverSpawnTimer = 0.f;
     float           safeRiverSpawnDelay = 0.f;
     void	        onEnd() override;
-    void            playerMovement();
-    void            adjustPlayerPosition();
-    void            checkPlayerState();
-    void	        registerActions();
-    void            spawnPlayer(sf::Vector2f pos);
+    //void            playerMovement();
+    //void            adjustPlayerPosition();
+    //void            checkPlayerState();
+    //void	        registerActions();
+    //void            spawnPlayer(sf::Vector2f pos);
 
 bool                gameFinished = false;        
 int                 finishOption = 0;             
@@ -163,12 +160,14 @@ bool                puzzleCheckTriggered = false;
 
 
     void            killPlayer();
-    void            updateScore();
+    //void            updateScore();
+
+    void            triggerDeath();
 
     void            loadLevel(const std::string& path);
     void            loadBackground();
 
-    sf::FloatRect   getViewBounds();
+    //sf::FloatRect   getViewBounds();
 
 public:
     Scene_Frogger(GameEngine* gameEngine, const std::string& levelPath);
@@ -191,6 +190,7 @@ public:
 
     int m_lives;
     void resetPlayer();
+    sf::Vector2f originalStartPosition;
 
     std::string getHoverMessage();
 

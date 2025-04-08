@@ -84,14 +84,22 @@ void GameEngine::sUserInput()
 		if (event.type == sf::Event::Closed)  
 			quit();  
 
-		if (event.type == sf::Event::KeyPressed || event.type == sf::Event::KeyReleased)
-		{
-			if (currentScene()->getActionMap().contains(event.key.code))
-			{
-				const std::string actionType = (event.type == sf::Event::KeyPressed) ? "START" : "END";
-				currentScene()->doAction( Command(currentScene()->getActionMap().at(event.key.code), actionType) );
-			}
-		}
+        if (event.type == sf::Event::KeyPressed)
+        {
+            switch (event.key.code)
+            {
+            case sf::Keyboard::Enter:
+                currentScene()->doAction(Command("Enter", "SELECT"));
+                break;
+            case sf::Keyboard::Escape:
+                currentScene()->doAction(Command("Escape", "QUIT"));
+                break;
+                // Additionally, your Scene_Menu update() polls W/S etc.
+            default:
+                break;
+            }
+        }
+
 	}
 }
 

@@ -11,6 +11,7 @@ Scene_Frogger::Scene_Frogger(GameEngine* gameEngine, const std::string& levelPat
 }
 
 
+const float safeJumpOffset = 50.f;
 
 
 void Scene_Frogger::init(const std::string& path)
@@ -23,6 +24,9 @@ void Scene_Frogger::init(const std::string& path)
     scaleFactorX = computedScaleX * overallMultiplier;
     scaleFactorY = computedScaleY * overallMultiplier;
 
+    spawnDrone(sf::Vector2f(1280.f, 800.f), 100.f);
+    initTrafficSignals();
+
     // Initialize Player Sprite.
     playerSprite.setTexture(Assets::getInstance().getTexture("Entities"));
     playerSprite.setTextureRect(sf::IntRect(223, 201, 27, 41));
@@ -33,6 +37,7 @@ void Scene_Frogger::init(const std::string& path)
     playerSprite.setPosition(playerX, playerY);
     playerSprite.setScale(scaleFactorX, scaleFactorY);
     startPosition = playerSprite.getPosition();
+    originalStartPosition = startPosition;
     groundY = playerY;
 
     // Initialize Background.
@@ -61,8 +66,9 @@ void Scene_Frogger::init(const std::string& path)
     float adjustedUpperLane = riverLaneUpper + logEnemyOffset;
 
     // Spawn logs and river enemies.
-    spawnLog(sf::Vector2f(-200.f, adjustedUpperLane), 80.f * scaleFactorX);
-    spawnRiverEnemy(sf::Vector2f(1000.f, adjustedUpperLane), 80.f * scaleFactorX);
+    spawnLog(sf::Vector2f(-200.f, adjustedUpperLane + safeJumpOffset), 80.f * scaleFactorX);
+    spawnRiverEnemy(sf::Vector2f(1000.f, adjustedUpperLane + safeJumpOffset), 80.f * scaleFactorX);
+
 
     spawnLog(sf::Vector2f(1200.f, riverLaneLower), -90.f * scaleFactorX);
     spawnRiverEnemy(sf::Vector2f(-150.f, riverLaneLower), -90.f * scaleFactorX);
@@ -91,12 +97,22 @@ void Scene_Frogger::safeRiver()
 
 void Scene_Frogger::resetPlayer()
 {
-    playerSprite.setPosition(startPosition);
+    const float upwardOffset = 220.f;   // amount to move up on each death
+
+
+    playerSprite.setPosition(originalStartPosition.x, originalStartPosition.y - upwardOffset);
+
     isJumping = false;
     verticalVelocity = 0.f;
     onLog = false;
     currentLogIndex = -1;
+
+    std::cout << "New spawn position: (" << startPosition.x
+        << ", " << startPosition.y << ")" << std::endl;
 }
+
+
+
 
 
 void Scene_Frogger::loadBackground()
@@ -149,7 +165,7 @@ void cycleState(TrafficSignal& signal) {
 void Scene_Frogger::initTrafficSignals() {
     TrafficSignal signal1;
     signal1.sprite.setTexture(Assets::getInstance().getTexture("Entities"));
-    signal1.sprite.setTextureRect(sf::IntRect(127, 209, 41, 46));
+    signal1.sprite.setTextureRect(sf::IntRect(16, 10, 37, 42));
 
     sf::FloatRect bounds = signal1.sprite.getLocalBounds();
     signal1.sprite.setOrigin(bounds.width / 2.f, bounds.height / 2.f);
@@ -175,12 +191,9 @@ float distance(const sf::Vector2f& a, const sf::Vector2f& b) {
 }
 
 void Scene_Frogger::handleDroneHit() {
-    m_lives--;
-    std::cout << "Lives remaining: " << m_lives << std::endl;
-    resetPlayer();
-    if (m_lives <= 0)
-        _game->quitLevel();
+    triggerDeath();
 }
+
 
 
 void updateDrone(Drone& drone, sf::Time dt, const sf::Vector2u& winSize, const sf::Sprite& playerSprite, Scene_Frogger* scene) {
@@ -207,7 +220,7 @@ void updateDrone(Drone& drone, sf::Time dt, const sf::Vector2u& winSize, const s
         else {
             if (dist != 0.f) {
                 sf::Vector2f direction = (playerPos - dronePos) / dist;
-                drone.sprite.move(direction * drone.speed * dt.asSeconds());
+                drone.sprite.move(direction * (drone.speed * 2.f) * dt.asSeconds());
             }
         }
         break;
@@ -219,7 +232,7 @@ void updateDrone(Drone& drone, sf::Time dt, const sf::Vector2u& winSize, const s
             drone.state = DroneState::Firing;
             drone.stateTimer = 0.f;
             // Initialize laser hitbox:
-            drone.laserHitbox.setSize(sf::Vector2f(40.f, 200.f));
+            drone.laserHitbox.setSize(sf::Vector2f(60.f, 200.f));
             drone.laserHitbox.setFillColor(sf::Color(255, 0, 0, 200));
             drone.laserHitbox.setOrigin(drone.laserHitbox.getSize().x / 2.f, 0.f);
             drone.laserHitbox.setPosition(drone.sprite.getPosition());
@@ -233,7 +246,6 @@ void updateDrone(Drone& drone, sf::Time dt, const sf::Vector2u& winSize, const s
         drone.laserHitbox.setPosition(drone.sprite.getPosition().x,
             drone.sprite.getPosition().y + laserOffsetY);
         if (playerSprite.getGlobalBounds().intersects(drone.laserHitbox.getGlobalBounds())) {
-            std::cout << "Player hit by drone laser!" << std::endl;
             scene->handleDroneHit();
         }
         if (drone.stateTimer >= fireDuration) {
@@ -243,6 +255,7 @@ void updateDrone(Drone& drone, sf::Time dt, const sf::Vector2u& winSize, const s
         }
         break;
     }
+
 
     case DroneState::Cooldown:
     {
@@ -258,7 +271,6 @@ void updateDrone(Drone& drone, sf::Time dt, const sf::Vector2u& winSize, const s
 
 
 
-
 void Scene_Frogger::update(sf::Time dt)
 {
     const sf::Vector2u winSize = _game->window().getSize();
@@ -271,7 +283,7 @@ void Scene_Frogger::update(sf::Time dt)
         std::cout << "Game Finished: You Won!" << std::endl;
     }
 
-    // --- Process Finish Menu Input ---
+    // If win condition is met, process finish menu input and exit update().
     if (gameFinished)
     {
         // Process finish menu input for win scenario.
@@ -279,7 +291,6 @@ void Scene_Frogger::update(sf::Time dt)
             finishOption = 0;
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::S))
             finishOption = 1;
-
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::D))
         {
             if (finishOption == 0)
@@ -293,8 +304,9 @@ void Scene_Frogger::update(sf::Time dt)
                 _game->changeScene("MENU", std::make_shared<Scene_Menu>(_game), true);
             }
         }
-        return; // Skip all other gameplay updates when game is finished.
+        return;  // Skip all further processing when gameFinished is true.
     }
+
 
     // --- Process Game Over Menu (if gameOver is true) ---
     if (gameOver)
@@ -434,6 +446,7 @@ void Scene_Frogger::update(sf::Time dt)
         puzzleCheckTriggered = false;
     }
 
+
     // --- Jump Mechanic ---
     if (!isJumping && sf::Keyboard::isKeyPressed(sf::Keyboard::Space))
     {
@@ -464,12 +477,12 @@ void Scene_Frogger::update(sf::Time dt)
         }
     }
 
-    if (m_playerIsHit)
-    {
-        m_playerAnimState = PlayerAnimState::Dying;
-        m_animTimer = 0.f;      // Reset the timer
-        m_dyingFrameIndex = 0;  // Start from the first dying frame
-    }
+    //if (m_playerIsHit)
+    //{
+    //    m_playerAnimState = PlayerAnimState::Dying;
+    //    m_animTimer = 0.f;      // Reset the timer
+    //    m_dyingFrameIndex = 0;  // Start from the first dying frame
+    //}
 
 
 
@@ -516,9 +529,9 @@ void Scene_Frogger::update(sf::Time dt)
     }
 
     // --- River Collision Check ---
-    if (!isJumping)
+    if (!isJumping && !gameFinished && m_playerAnimState != PlayerAnimState::Dying)
     {
-        float riverTop = winSize.y * 0.30f;
+        float riverTop = winSize.y * 0.35f;
         float riverBottom = winSize.y * 0.65f;
         float playerCenterY = playerSprite.getGlobalBounds().top + playerSprite.getGlobalBounds().height / 2.f;
         if (playerCenterY >= riverTop && playerCenterY <= riverBottom && !onLog)
@@ -533,13 +546,13 @@ void Scene_Frogger::update(sf::Time dt)
             else if (!hasSafeRiver)
             {
                 std::cout << "Player in river without log and no power-up! Dying." << std::endl;
-                m_lives--;
-                resetPlayer();
-                if (m_lives <= 0)
-                    _game->quitLevel();
+                triggerDeath();
             }
         }
     }
+
+
+
 
     const float designWidth = 2560.f;
     const float designHeight = 1600.f;
@@ -598,11 +611,22 @@ void Scene_Frogger::update(sf::Time dt)
         }
     }
 
+    // Define an extra offset for upper lane logs/river enemies for safe jumping.
+      // Increase to 50 pixels for visibility
+
     // --- Spawn Logs ---
     if (static_cast<float>(std::rand()) / RAND_MAX < logSpawnChance * dt.asSeconds())
     {
-        int lane = std::rand() % 2; 
-        float logY = (lane == 0) ? adjustedUpperLane : riverLaneLower;
+        int lane = std::rand() % 2;  // 0 for upper lane, 1 for lower lane
+        float logY;
+        if (lane == 0) {
+            // Upper lane: add extra safe jump offset
+            logY = adjustedUpperLane + safeJumpOffset;
+            std::cout << "Spawning log in upper lane at Y: " << logY << std::endl;
+        }
+        else {
+            logY = riverLaneLower;
+        }
         float startX, speed;
         if (lane == 0)
         {
@@ -622,16 +646,22 @@ void Scene_Frogger::update(sf::Time dt)
         }
     }
 
-
     // --- Spawn River Enemies ---
     if (static_cast<float>(std::rand()) / RAND_MAX < enemySpawnChance * dt.asSeconds())
     {
-        int lane = std::rand() % 2; 
-        float enemyY = (lane == 0) ? adjustedUpperLane : riverLaneLower;
+        int lane = std::rand() % 2;  // 0 for upper lane, 1 for lower lane
+        float enemyY;
+        if (lane == 0) {
+            enemyY = adjustedUpperLane + safeJumpOffset;  // Add extra offset for upper lane
+            std::cout << "Spawning river enemy in upper lane at Y: " << enemyY << std::endl;
+        }
+        else {
+            enemyY = riverLaneLower;
+        }
         float startX, speed;
         if (lane == 0)
         {
-            // Upper lane: move left-to-right (same as logs).
+            // Upper lane: move left-to-right.
             startX = -150.f;
             speed = 80.f * scaleFactorX;
         }
@@ -660,11 +690,10 @@ void Scene_Frogger::update(sf::Time dt)
     }
     for (auto& car : enemyCars)
     {
-        float dx = car.sprite.getPosition().x - playerSprite.getPosition().x;
-        float dy = car.sprite.getPosition().y - playerSprite.getPosition().y;
-        float dist = std::sqrt(dx * dx + dy * dy);
-        float speedMultiplier = safePassageActivated ? 0.0f : ((dist < 150.f) ? 0.2f : 1.0f);
+        // When safe passage is active, stop the cars (multiplier = 0), otherwise move normally (multiplier = 1)
+        float speedMultiplier = safePassageActivated ? 0.0f : 1.0f;
         car.sprite.move(car.speed * speedMultiplier * dt.asSeconds(), 0.f);
+
         sf::FloatRect carBounds = car.sprite.getGlobalBounds();
         if (car.speed > 0 && carBounds.left > winSize.x)
             car.sprite.setPosition(-carBounds.width, car.sprite.getPosition().y);
@@ -672,6 +701,7 @@ void Scene_Frogger::update(sf::Time dt)
             car.sprite.setPosition(winSize.x, car.sprite.getPosition().y);
     }
 
+        
     // --- Update Logs ---
     for (auto& log : logs)
     {
@@ -689,7 +719,6 @@ void Scene_Frogger::update(sf::Time dt)
     {
         float speedMultiplier = 1.0f;
         enemy.sprite.move(enemy.speed * speedMultiplier * dt.asSeconds(), 0.f);
-        // Flip the sprite horizontally if moving left:
         if (enemy.speed < 0)
             enemy.sprite.setScale(-RIVER_ENEMY_SCALE.x, RIVER_ENEMY_SCALE.y);
         else
@@ -708,6 +737,7 @@ void Scene_Frogger::update(sf::Time dt)
     {
         updateDrone(drone, dt, winSize, playerSprite, this);
     }
+
 
     sCollisions(dt);
     sMovement(dt);
@@ -849,26 +879,20 @@ void Scene_Frogger::sRender() {
     powerUpText.setPosition(10.f, 40.f);
     _game->window().draw(powerUpText);
 
-    // Check if Game Over or Game Finished and draw overlay.
-    if (gameOver || gameFinished) {
+    if (gameOver || gameFinished)
+    {
         // Draw a semi-transparent overlay.
         sf::RectangleShape overlay;
-        overlay.setSize(sf::Vector2f(_game->window().getSize().x, _game->window().getSize().y));
+        overlay.setSize(sf::Vector2f(_game->window().getSize()));
         overlay.setFillColor(sf::Color(0, 0, 0, 150));
         _game->window().draw(overlay);
 
-        // Draw final message.
+        // Draw Game Over text.
         sf::Text finalText;
         finalText.setFont(Assets::getInstance().getFont("main"));
         finalText.setCharacterSize(64);
-        if (gameFinished) {
-            finalText.setString("You Won!");
-            finalText.setFillColor(sf::Color::Yellow);
-        }
-        else if (gameOver) {
-            finalText.setString("Game Over");
-            finalText.setFillColor(sf::Color::Red);
-        }
+        finalText.setString("Game Over");
+        finalText.setFillColor(sf::Color::Red);
         sf::FloatRect textBounds = finalText.getLocalBounds();
         finalText.setOrigin(textBounds.left + textBounds.width / 2.f, textBounds.top + textBounds.height / 2.f);
         finalText.setPosition(_game->window().getSize().x / 2.f, _game->window().getSize().y * 0.3f);
@@ -909,11 +933,31 @@ void Scene_Frogger::sRender() {
 }
 
 
+void Scene_Frogger::triggerDeath()
+{
+    if (gameFinished)
+        return;
+
+    m_playerIsHit = true;
+    m_playerAnimState = PlayerAnimState::Dying;
+    m_animTimer = 0.f;
+    m_dyingFrameIndex = 0;
+    m_dyingTotalTime = 0.f;
+
+    isJumping = false;
+    verticalVelocity = 0.f;
+}
+
+
+
+
+
+
 void Scene_Frogger::spawnPowerUp(const sf::Vector2f& position, float speed)
 {
     PowerUp pu;
     pu.sprite.setTexture(Assets::getInstance().getTexture("Entities"));
-    pu.sprite.setTextureRect(sf::IntRect(19, 193, 35, 35));
+    pu.sprite.setTextureRect(sf::IntRect(18, 193, 35, 35));
     pu.sprite.setPosition(position);
     pu.speed = speed;
     pu.active = true;
@@ -924,12 +968,11 @@ void Scene_Frogger::spawnSafeRiver(const sf::Vector2f& position, float speed)
 {
     PowerUp pu;
     pu.sprite.setTexture(Assets::getInstance().getTexture("Entities"));
-    pu.sprite.setTextureRect(sf::IntRect(19, 193, 35, 35));  // Region for safe river power-up
+    pu.sprite.setTextureRect(sf::IntRect(19, 193, 35, 35));  
     pu.sprite.setPosition(position);
     pu.speed = speed;
     pu.active = true;
 
-    // Set the scale explicitly using our constant.
     pu.sprite.setScale(SAFE_RIVER_SCALE);
 
     std::cout << "Safe river power-up new scale: "
@@ -954,13 +997,11 @@ void Scene_Frogger::spawnEnemyCar(const sf::Vector2f& position, float speed)
     car.sprite.setTexture(Assets::getInstance().getTexture("Entities"));
     
     sf::IntRect carRects[5] = {
-        sf::IntRect(221, 60, 35, 29),
-        sf::IntRect(88, 125, 31, 31),
-        sf::IntRect(0, 58, 60, 32),
-        sf::IntRect(174, 163, 36, 30),
-        sf::IntRect(104, 163, 35, 30)
+        sf::IntRect(130, 96, 36, 21),
+        sf::IntRect(171, 96, 37, 22),
+        sf::IntRect(214, 96, 47, 25),
     };
-    int carType = std::rand() % 5;
+    int carType = std::rand() % 3;
     car.sprite.setTextureRect(carRects[carType]);
     
     // Apply scaling to match the design resolution.
@@ -971,7 +1012,7 @@ void Scene_Frogger::spawnEnemyCar(const sf::Vector2f& position, float speed)
     car.sprite.setOrigin(bounds.width / 2.f, bounds.height / 2.f);
     
     car.sprite.setPosition(position);
-    car.speed = speed;  // Optionally, multiply speed by a factor if needed.
+    car.speed = speed;  
     enemyCars.push_back(car);
 }
 
@@ -980,12 +1021,11 @@ void Scene_Frogger::spawnEnemyCar(const sf::Vector2f& position, float speed)
 
 void Scene_Frogger::spawnLog(const sf::Vector2f& position, float speed)
 {
-    sf::IntRect logRect(70, 29, 160, 35);
+    sf::IntRect logRect(9, 94, 68, 29);
     Log log;
     log.sprite.setTexture(Assets::getInstance().getTexture("Entities"));
     log.sprite.setTextureRect(logRect);
 
-    // Apply the same scale factors as other sprites:
     log.sprite.setScale(scaleFactorX, scaleFactorY);
 
     // Center the log's origin.
@@ -993,7 +1033,7 @@ void Scene_Frogger::spawnLog(const sf::Vector2f& position, float speed)
     log.sprite.setOrigin(bounds.width / 2.f, bounds.height / 2.f);
 
     log.sprite.setPosition(position);
-    log.speed = speed; // Adjust speed as needed; you can also multiply by a factor if necessary.
+    log.speed = speed; 
     logs.push_back(log);
 }
 
@@ -1006,7 +1046,7 @@ void Scene_Frogger::spawnRiverEnemy(const sf::Vector2f& position, float speed)
 {
     RiverEnemy enemy;
     enemy.sprite.setTexture(Assets::getInstance().getTexture("Entities"));
-    enemy.sprite.setTextureRect(sf::IntRect(10, 227, 83, 42));  // Region for river enemy
+    enemy.sprite.setTextureRect(sf::IntRect(10, 231, 83, 42));  // Region for river enemy
     sf::FloatRect bounds = enemy.sprite.getLocalBounds();
     enemy.sprite.setOrigin(bounds.width / 2.f, bounds.height / 2.f);
     enemy.sprite.setPosition(position);
@@ -1024,13 +1064,6 @@ void Scene_Frogger::spawnRiverEnemy(const sf::Vector2f& position, float speed)
 
 
 
-
-
-
-
-
-
-
 void Scene_Frogger::spawnDrone(const sf::Vector2f& position, float speed) {
     Drone drone;
     drone.sprite.setTexture(Assets::getInstance().getTexture("Entities"));
@@ -1041,13 +1074,17 @@ void Scene_Frogger::spawnDrone(const sf::Vector2f& position, float speed) {
     drone.sprite.setOrigin(bounds.width / 2.f, bounds.height / 2.f);
     drone.sprite.setPosition(position);
     drone.speed = speed;
-    // Set an initial random target position (for testing, within window bounds)
+    // Optionally set a scale (using player scale factors, or define your own)
+    drone.sprite.setScale(scaleFactorX, scaleFactorY);
+    // Set an initial random target position (for testing)
     const sf::Vector2u winSize = _game->window().getSize();
     drone.targetPos.x = static_cast<float>(std::rand() % winSize.x);
     drone.targetPos.y = static_cast<float>(std::rand() % winSize.y);
 
+    std::cout << "Spawning drone at: " << position.x << ", " << position.y << std::endl;
     drones.push_back(drone);
 }
+
 
 std::string Scene_Frogger::getHoverMessage() {
     // Get the current mouse position relative to the window.
@@ -1117,7 +1154,6 @@ void Scene_Frogger::sCollisions(sf::Time dt)
     {
         if (playerSprite.getGlobalBounds().intersects(car.sprite.getGlobalBounds()))
         {
-            std::cout << "Player collided with enemy car!" << std::endl;
             collisionDetected = true;
             break;
         }
@@ -1128,8 +1164,7 @@ void Scene_Frogger::sCollisions(sf::Time dt)
         {
             if (playerSprite.getGlobalBounds().intersects(enemy.sprite.getGlobalBounds()))
             {
-                std::cout << "Player collided with river enemy!" << std::endl;
-                  collisionDetected = true;
+                collisionDetected = true;
                 break;
             }
         }
@@ -1137,19 +1172,8 @@ void Scene_Frogger::sCollisions(sf::Time dt)
 
     if (collisionDetected)
     {
-        m_lives--;
-        std::cout << "Lives remaining: " << m_lives << std::endl;
-        resetPlayer();
-
-        isJumping = false;
-        verticalVelocity = 0.f;
-
-        if (m_lives <= 0)
-        {
-            std::cout << "No lives left. Game Over." << std::endl;
-            gameOver = true;
-            return;
-        }
+        triggerDeath();
+        return;
     }
 }
 
@@ -1161,71 +1185,55 @@ void Scene_Frogger::sCollisions(sf::Time dt)
 
 void Scene_Frogger::killPlayer()
 {
-    // Reset player's position.
-    playerSprite.setPosition(startPosition);
+    if (gameFinished)
+        return;
 
-    // Reset animation state back to walking.
-    m_playerAnimState = PlayerAnimState::Walking;
-    m_playerIsHit = false;
-    m_animTimer = 0.f;
-    m_dyingFrameIndex = 0;
-    m_dyingTotalTime = 0.f;
-
+    std::cout << "Player is dead. Game Over." << std::endl;
+    gameOver = true;
 }
+
 
 
 void Scene_Frogger::sAnimation(sf::Time dt)
 {
-    // Define the frames for goSafe.png asset.
     static sf::IntRect walkFrame(12, 8, 26, 37);
     static sf::IntRect jumpFrame(45, 7, 27, 39);
-
-    // Dying animation: two frames.
     static sf::IntRect dyingFrames[2] = {
         sf::IntRect(81, 5, 29, 41),
         sf::IntRect(125, 18, 41, 25)
     };
 
-    const float dyingFrameDuration = 0.2f;
-    const float totalDyingDuration = 0.8f;
+    const float dyingFrameDuration = 0.1f;
+    const float totalDyingDuration = 0.2f;
 
     switch (m_playerAnimState)
     {
-    case PlayerAnimState::Walking:
-        playerSprite.setTexture(Assets::getInstance().getTexture("goSafe"));
-        playerSprite.setTextureRect(walkFrame);
-        break;
-
-    case PlayerAnimState::Jumping:
-        playerSprite.setTexture(Assets::getInstance().getTexture("goSafe"));
-        playerSprite.setTextureRect(jumpFrame);
-        break;
-
-    case PlayerAnimState::Dying:
-    {
-        // Increment timers.
-        m_animTimer += dt.asSeconds();
-        m_dyingTotalTime += dt.asSeconds();
-
-        // Advance frame if enough time passed.
-        if (m_animTimer >= dyingFrameDuration)
+        case PlayerAnimState::Walking:
+            playerSprite.setTexture(Assets::getInstance().getTexture("goSafe"));
+            playerSprite.setTextureRect(walkFrame);
+            break;
+        case PlayerAnimState::Jumping:
+            playerSprite.setTexture(Assets::getInstance().getTexture("goSafe"));
+            playerSprite.setTextureRect(jumpFrame);
+            break;
+        case PlayerAnimState::Dying:
         {
-            m_animTimer = 0.f;
-            // Toggle between frame 0 and 1.
-            m_dyingFrameIndex = (m_dyingFrameIndex + 1) % 2;
+            m_animTimer += dt.asSeconds();
+            m_dyingTotalTime += dt.asSeconds();
+            if (m_animTimer >= dyingFrameDuration)
+            {
+                m_animTimer = 0.f;
+                m_dyingFrameIndex = (m_dyingFrameIndex + 1) % 2;
+            }
+            playerSprite.setTexture(Assets::getInstance().getTexture("goSafe"));
+            playerSprite.setTextureRect(dyingFrames[m_dyingFrameIndex]);
+            if (m_dyingTotalTime >= totalDyingDuration)
+            {
+                killPlayer();
+                return;
+            }
+            break;
         }
-
-        playerSprite.setTexture(Assets::getInstance().getTexture("goSafe"));
-        playerSprite.setTextureRect(dyingFrames[m_dyingFrameIndex]);
-
-        // Only respawn once total dying duration is reached.
-        if (m_dyingTotalTime >= totalDyingDuration)
-        {
-            killPlayer();
-            return;
-        }
-        break;
-    }
     }
 }
 

@@ -212,6 +212,7 @@
     <ClCompile Include="Entity.cpp" />
     <ClCompile Include="EntityManager.cpp" />
     <ClCompile Include="GameEngine.cpp" />
+    <ClCompile Include="HowToPlayScene.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="MusicPlayer.cpp" />
     <ClCompile Include="Physics.cpp" />
@@ -229,7 +230,9 @@
     <ClInclude Include="Entity.h" />
     <ClInclude Include="EntityManager.h" />
     <ClInclude Include="GameEngine.h" />
+    <ClInclude Include="HowToPlayScene.h" />
     <ClInclude Include="json.hpp" />
+    <ClInclude Include="leaf.h" />
     <ClInclude Include="MusicPlayer.h" />
     <ClInclude Include="Physics.h" />
     <ClInclude Include="Scene.h" />

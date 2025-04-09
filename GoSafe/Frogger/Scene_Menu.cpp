@@ -168,7 +168,7 @@ void Scene_Menu::sRender()
 
     sf::Text footer;
     footer.setFont(Assets::getInstance().getFont("main"));
-    footer.setString("W/S: Navigate    D/A or Enter: Select    Esc: Quit");
+    footer.setString("W/S: Navigate    Enter: Select    Esc: Quit");
     footer.setCharacterSize(infoFontSize);
     footer.setFillColor(sf::Color(180, 180, 180));
     sf::FloatRect footerBounds = footer.getLocalBounds();

@@ -3,6 +3,7 @@
 #include <cstdlib> 
 #include <cmath> 
 #include <iostream>
+#include "MusicPlayer.h"
 
 Scene_Frogger::Scene_Frogger(GameEngine* gameEngine, const std::string& levelPath)
     : Scene(gameEngine)
@@ -275,6 +276,29 @@ void Scene_Frogger::update(sf::Time dt)
 {
     const sf::Vector2u winSize = _game->window().getSize();
 
+    static float runSoundTimer = 0.f;
+    const float runSoundInterval = 0.3f; // Adjust as needed
+
+    if (sf::Keyboard::isKeyPressed(sf::Keyboard::W) ||
+        sf::Keyboard::isKeyPressed(sf::Keyboard::A) ||
+        sf::Keyboard::isKeyPressed(sf::Keyboard::S) ||
+        sf::Keyboard::isKeyPressed(sf::Keyboard::D))
+    {
+        runSoundTimer += dt.asSeconds();
+        if (runSoundTimer >= runSoundInterval)
+        {
+            if (MusicPlayer::getInstance().getStatus() != sf::SoundSource::Playing)
+            {
+                MusicPlayer::getInstance().play("run", false);
+            }
+            runSoundTimer = 0.f;
+        }
+    }
+    else
+    {
+        runSoundTimer = 0.f;
+    }
+
     // --- Win Condition Check (Game Finished) ---
     if (!gameFinished && playerSprite.getPosition().y <= 5.f)
     {
@@ -283,15 +307,18 @@ void Scene_Frogger::update(sf::Time dt)
         std::cout << "Game Finished: You Won!" << std::endl;
     }
 
-    // If win condition is met, process finish menu input and exit update().
-    if (gameFinished)
+    if (gameOver || gameFinished)
     {
-        // Process finish menu input for win scenario.
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::W))
-            finishOption = 0;
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::S))
-            finishOption = 1;
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::D))
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::W) || sf::Keyboard::isKeyPressed(sf::Keyboard::Up))
+        {
+            finishOption = 0;  // select "Play Again"
+        }
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::S) || sf::Keyboard::isKeyPressed(sf::Keyboard::Down))
+        {
+            finishOption = 1;  // select "Back To Menu"
+        }
+
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Return))  // Enter key
         {
             if (finishOption == 0)
             {
@@ -300,37 +327,14 @@ void Scene_Frogger::update(sf::Time dt)
             }
             else if (finishOption == 1)
             {
-                std::cout << "Back to Menu selected!" << std::endl;
+                std::cout << "Back To Menu selected!" << std::endl;
                 _game->changeScene("MENU", std::make_shared<Scene_Menu>(_game), true);
             }
         }
-        return;  // Skip all further processing when gameFinished is true.
-    }
 
-
-    // --- Process Game Over Menu (if gameOver is true) ---
-    if (gameOver)
-    {
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::W))
-            gameOverOption = 0;
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::S))
-            gameOverOption = 1;
-
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::D))
-        {
-            if (gameOverOption == 0)
-            {
-                std::cout << "Play Again selected!" << std::endl;
-                _game->changeScene("PLAY", std::make_shared<Scene_Frogger>(_game, "../assets/level1.txt"), true);
-            }
-            else if (gameOverOption == 1)
-            {
-                std::cout << "Back to Menu selected!" << std::endl;
-                _game->changeScene("MENU", std::make_shared<Scene_Menu>(_game), true);
-            }
-        }
         return;
     }
+
 
     // --- Power-Up Spawn Check (Safe River) ---
     {
@@ -448,14 +452,28 @@ void Scene_Frogger::update(sf::Time dt)
 
 
     // --- Jump Mechanic ---
-    if (!isJumping && sf::Keyboard::isKeyPressed(sf::Keyboard::Space))
+    if (sf::Keyboard::isKeyPressed(sf::Keyboard::Space))
     {
-        isJumping = true;
-        jumpTimer = 0.f;
-        jumpStartPosition = playerSprite.getPosition();
+        if (!isJumping && !jumpSoundPlayed)
+        {
+            isJumping = true;
+            jumpTimer = 0.f;
+            jumpStartPosition = playerSprite.getPosition();
+            m_playerAnimState = PlayerAnimState::Jumping;
 
-        m_playerAnimState = PlayerAnimState::Jumping;
+            MusicPlayer::getInstance().play("hop", false);
+            MusicPlayer::getInstance().play("hop", false);
+
+            jumpSoundPlayed = true;
+        }
     }
+    else
+    {
+        jumpSoundPlayed = false;
+    }
+
+
+
     if (isJumping)
     {
         jumpTimer += dt.asSeconds();
@@ -611,8 +629,6 @@ void Scene_Frogger::update(sf::Time dt)
         }
     }
 
-    // Define an extra offset for upper lane logs/river enemies for safe jumping.
-      // Increase to 50 pixels for visibility
 
     // --- Spawn Logs ---
     if (static_cast<float>(std::rand()) / RAND_MAX < logSpawnChance * dt.asSeconds())
@@ -690,7 +706,6 @@ void Scene_Frogger::update(sf::Time dt)
     }
     for (auto& car : enemyCars)
     {
-        // When safe passage is active, stop the cars (multiplier = 0), otherwise move normally (multiplier = 1)
         float speedMultiplier = safePassageActivated ? 0.0f : 1.0f;
         car.sprite.move(car.speed * speedMultiplier * dt.asSeconds(), 0.f);
 
@@ -840,25 +855,6 @@ void Scene_Frogger::sRender() {
         }
     }
 
-    // After drawing all game elements, get hover message:
-    std::string hoverMessage = getHoverMessage();
-    if (!hoverMessage.empty()) {
-        sf::Text hoverText;
-        hoverText.setFont(Assets::getInstance().getFont("main"));
-        hoverText.setCharacterSize(24);
-        hoverText.setFillColor(sf::Color::Cyan);
-        hoverText.setOutlineColor(sf::Color::Black);
-        hoverText.setOutlineThickness(1.f);
-        hoverText.setString(hoverMessage);
-
-        hoverText.setPosition(20.f, _game->window().getSize().y - 60.f);
-
-        _game->window().draw(hoverText);
-    }
-
-
-
-
     // Draw the score.
     sf::Text scoreText("Score: 100", Assets::getInstance().getFont("main"), 20);
     scoreText.setPosition(10.f, 10.f);
@@ -887,47 +883,61 @@ void Scene_Frogger::sRender() {
         overlay.setFillColor(sf::Color(0, 0, 0, 150));
         _game->window().draw(overlay);
 
-        // Draw Game Over text.
+        // Prepare final message text:
         sf::Text finalText;
         finalText.setFont(Assets::getInstance().getFont("main"));
-        finalText.setCharacterSize(64);
-        finalText.setString("Game Over");
-        finalText.setFillColor(sf::Color::Red);
-        sf::FloatRect textBounds = finalText.getLocalBounds();
-        finalText.setOrigin(textBounds.left + textBounds.width / 2.f, textBounds.top + textBounds.height / 2.f);
-        finalText.setPosition(_game->window().getSize().x / 2.f, _game->window().getSize().y * 0.3f);
+        finalText.setStyle(sf::Text::Bold);
+        finalText.setOutlineThickness(2.f);
+        finalText.setOutlineColor(sf::Color::Black);
+
+        // Set text for win or game over:
+        if (gameFinished)
+        {
+            finalText.setString("You Won!");
+            finalText.setFillColor(sf::Color::Yellow);
+        }
+        else
+        {
+            finalText.setString("Game Over");
+            finalText.setFillColor(sf::Color::Red);
+        }
+        finalText.setCharacterSize(80);
+
+        // Center the final message:
+        sf::FloatRect finalBounds = finalText.getLocalBounds();
+        finalText.setOrigin(finalBounds.left + finalBounds.width / 2.f,
+            finalBounds.top + finalBounds.height / 2.f);
+        finalText.setPosition(_game->window().getSize().x / 2.f,
+            _game->window().getSize().y / 3.f);
         _game->window().draw(finalText);
 
-        // Draw options.
-        std::string options;
-        if (gameOver) {
-            if (gameOverOption == 0)
-                options = "> Play Again <\n  Back to Menu";
-            else
-                options = "  Play Again\n> Back to Menu <";
-        }
-        else {
-            // For game finished, similar option handling if needed.
-            if (finishOption == 0)
-                options = "> Play Again <\n  Back to Menu";
-            else
-                options = "  Play Again\n> Back to Menu <";
-        }
-        sf::Text optionText(options, Assets::getInstance().getFont("main"), 48);
-        optionText.setFillColor(sf::Color::White);
-        sf::FloatRect optBounds = optionText.getLocalBounds();
-        optionText.setOrigin(optBounds.left + optBounds.width / 2.f, optBounds.top + optBounds.height / 2.f);
-        optionText.setPosition(_game->window().getSize().x / 2.f, _game->window().getSize().y * 0.5f);
-        _game->window().draw(optionText);
+        sf::Text optionsText;
+        optionsText.setFont(Assets::getInstance().getFont("main"));
+        optionsText.setStyle(sf::Text::Bold);
+        optionsText.setOutlineThickness(1.5f);
+        optionsText.setOutlineColor(sf::Color::Black);
+        optionsText.setCharacterSize(48);   
 
-        // Draw instructions.
-        sf::Text instructText("Use W/S to choose, D to select", Assets::getInstance().getFont("main"), 20);
-        instructText.setFillColor(sf::Color::White);
-        sf::FloatRect instrBounds = instructText.getLocalBounds();
-        instructText.setOrigin(instrBounds.left + instrBounds.width / 2.f, instrBounds.top + instrBounds.height / 2.f);
-        instructText.setPosition(_game->window().getSize().x / 2.f, _game->window().getSize().y * 0.8f);
-        _game->window().draw(instructText);
+        std::string optionString;
+        if (finishOption == 0)
+            optionString = "> Play Again <\n  Back To Menu";
+        else
+            optionString = "  Play Again\n> Back To Menu <";
+        optionsText.setString(optionString);
+
+        // Center the options text.
+        sf::FloatRect optBounds = optionsText.getLocalBounds();
+        optionsText.setOrigin(optBounds.left + optBounds.width / 2.f,
+            optBounds.top + optBounds.height / 2.f);
+        optionsText.setPosition(_game->window().getSize().x / 2.f,
+            _game->window().getSize().y * 0.6f);
+        _game->window().draw(optionsText);
+
+        return; // Skip further updates/draws when in end state
     }
+
+
+
 
     //_game->window().display();
 }
@@ -947,10 +957,6 @@ void Scene_Frogger::triggerDeath()
     isJumping = false;
     verticalVelocity = 0.f;
 }
-
-
-
-
 
 
 void Scene_Frogger::spawnPowerUp(const sf::Vector2f& position, float speed)
@@ -984,13 +990,6 @@ void Scene_Frogger::spawnSafeRiver(const sf::Vector2f& position, float speed)
 
 
 
-
-
-
-
-
-
-
 void Scene_Frogger::spawnEnemyCar(const sf::Vector2f& position, float speed)
 {
     EnemyCar car;
@@ -1017,8 +1016,6 @@ void Scene_Frogger::spawnEnemyCar(const sf::Vector2f& position, float speed)
 }
 
 
-
-
 void Scene_Frogger::spawnLog(const sf::Vector2f& position, float speed)
 {
     sf::IntRect logRect(9, 94, 68, 29);
@@ -1041,7 +1038,6 @@ const sf::Vector2f Scene_Frogger::SAFE_RIVER_SCALE(1.0f, 1.0f);
 const sf::Vector2f Scene_Frogger::RIVER_ENEMY_SCALE(1.5f, 1.5f);
 
 
-
 void Scene_Frogger::spawnRiverEnemy(const sf::Vector2f& position, float speed)
 {
     RiverEnemy enemy;
@@ -1052,7 +1048,6 @@ void Scene_Frogger::spawnRiverEnemy(const sf::Vector2f& position, float speed)
     enemy.sprite.setPosition(position);
     enemy.speed = speed;
 
-    // Set the scale explicitly using our constant.
     enemy.sprite.setScale(RIVER_ENEMY_SCALE);
 
     std::cout << "River enemy new scale: "
@@ -1063,20 +1058,15 @@ void Scene_Frogger::spawnRiverEnemy(const sf::Vector2f& position, float speed)
 }
 
 
-
 void Scene_Frogger::spawnDrone(const sf::Vector2f& position, float speed) {
     Drone drone;
     drone.sprite.setTexture(Assets::getInstance().getTexture("Entities"));
-    // Set a texture rectangle that represents your drone.
     drone.sprite.setTextureRect(sf::IntRect(60, 193, 65, 35));
-    // Center the drone’s origin.
     sf::FloatRect bounds = drone.sprite.getLocalBounds();
     drone.sprite.setOrigin(bounds.width / 2.f, bounds.height / 2.f);
     drone.sprite.setPosition(position);
     drone.speed = speed;
-    // Optionally set a scale (using player scale factors, or define your own)
     drone.sprite.setScale(scaleFactorX, scaleFactorY);
-    // Set an initial random target position (for testing)
     const sf::Vector2u winSize = _game->window().getSize();
     drone.targetPos.x = static_cast<float>(std::rand() % winSize.x);
     drone.targetPos.y = static_cast<float>(std::rand() % winSize.y);
@@ -1086,57 +1076,6 @@ void Scene_Frogger::spawnDrone(const sf::Vector2f& position, float speed) {
 }
 
 
-std::string Scene_Frogger::getHoverMessage() {
-    // Get the current mouse position relative to the window.
-    sf::Vector2i mousePixelPos = sf::Mouse::getPosition(_game->window());
-    // Convert it to world coordinates.
-    sf::Vector2f mousePos = _game->window().mapPixelToCoords(mousePixelPos);
-
-    // Check if the mouse is over a traffic signal.
-    for (const auto& signal : trafficSignals) {
-        if (signal.sprite.getGlobalBounds().contains(mousePos)) {
-            return "Traffic Signal: Press E to toggle. When red, press X for safe passage.";
-        }
-    }
-
-    // Check if the mouse is over an enemy car.
-    for (const auto& car : enemyCars) {
-        if (car.sprite.getGlobalBounds().contains(mousePos)) {
-            return "Enemy Car: Avoid these moving vehicles!";
-        }
-    }
-
-    // Check if the mouse is over a log.
-    for (const auto& log : logs) {
-        if (log.sprite.getGlobalBounds().contains(mousePos)) {
-            return "Log: Ride these to cross the river safely.";
-        }
-    }
-
-    // Check if the mouse is over a river enemy.
-    for (const auto& enemy : riverEnemies) {
-        if (enemy.sprite.getGlobalBounds().contains(mousePos)) {
-            return "River Enemy: Beware of these obstacles in the water.";
-        }
-    }
-
-    // Check if the mouse is over a drone (if you have drones).
-    for (const auto& drone : drones) {
-        if (drone.sprite.getGlobalBounds().contains(mousePos)) {
-            return "Drone: Stay clear of its laser attack!";
-        }
-    }
-
-    // Check if the mouse is over a power-up.
-    for (const auto& pu : powerUps) {
-        if (pu.active && pu.sprite.getGlobalBounds().contains(mousePos)) {
-            return "Power-Up: Collect this for a safe river crossing.";
-        }
-    }
-
-    // No interactive element is being hovered over.
-    return "";
-}
 
 
 
@@ -1196,11 +1135,11 @@ void Scene_Frogger::killPlayer()
 
 void Scene_Frogger::sAnimation(sf::Time dt)
 {
-    static sf::IntRect walkFrame(12, 8, 26, 37);
-    static sf::IntRect jumpFrame(45, 7, 27, 39);
+    static sf::IntRect walkFrame(12, 1, 28, 63);
+    static sf::IntRect jumpFrame(55, 0, 27, 64);
     static sf::IntRect dyingFrames[2] = {
-        sf::IntRect(81, 5, 29, 41),
-        sf::IntRect(125, 18, 41, 25)
+        sf::IntRect(103, 2, 28, 62),
+        sf::IntRect(152, 25, 38, 32)
     };
 
     const float dyingFrameDuration = 0.1f;

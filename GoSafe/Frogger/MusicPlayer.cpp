@@ -4,6 +4,7 @@
 
 #include "MusicPlayer.h"
 #include <stdexcept>
+#include <iostream>
 
 
 MusicPlayer::MusicPlayer() {
@@ -16,19 +17,23 @@ void MusicPlayer::addSong(const std::string&name, const std::string&path) {
 }
 
 MusicPlayer& MusicPlayer::getInstance() {
-    static MusicPlayer instance; // Meyers Singleton implementation
+    static MusicPlayer instance;
     return instance;
 }
 
 
-void MusicPlayer::play(String theme) {
-    if (!_music.openFromFile(_filenames[theme]))
-        throw std::runtime_error("Music could not open file");
+void MusicPlayer::play(const std::string& theme, bool loop)
+{
+    std::string path = _filenames[theme];
+    if (!_music.openFromFile(path))
+        throw std::runtime_error("Music could not open file: " + path);
 
     _music.setVolume(_volume);
-    _music.setLoop(true);
+    _music.setLoop(loop);
     _music.play();
 }
+
+
 
 
 void MusicPlayer::stop() {

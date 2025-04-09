@@ -19,15 +19,14 @@ private:
 
 public:
     static MusicPlayer& getInstance();
-
-    // no copy or move for singleton
+    sf::SoundSource::Status getStatus() const { return _music.getStatus(); }
     MusicPlayer(const MusicPlayer&) = delete;
     MusicPlayer(MusicPlayer&&) = delete;
     MusicPlayer& operator=(const MusicPlayer&) = delete;
     MusicPlayer& operator=( MusicPlayer&&) = delete;
 
     void                            addSong(const std::string& name, const std::string& path );
-    void							play(String theme);
+    void							play(const std::string& theme, bool loop = true);
     void							stop();
     void							setPaused(bool paused);
     void							setVolume(float volume);

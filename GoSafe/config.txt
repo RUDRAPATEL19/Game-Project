@@ -22,10 +22,10 @@ Texture leaf			../assets/Textures/leaf.png
 Sprite Background       Background   0 0  480 600
 Sprite Title            Title 0 0 480 600
 
-#
 # SOUNDS
-Sound death             ../assets/Sound/froggerDie.wav
-Sound hop               ../assets/Sound/froggerMove.wav
+Sound death    ../assets/Sound/froggerDie.wav
+Sound hop      ../assets/Sound/jump.mp3
+Sound run      ../assets/Sound/run.mp3
 
 JSON                    ../assets/Textures/FroggerAtlas.json
 

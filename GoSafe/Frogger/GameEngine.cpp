@@ -20,24 +20,24 @@ GameEngine::GameEngine(const std::string& path)
 
 void GameEngine::init(const std::string& path)
 {
-    // Create the window using the desktop resolution.
     sf::VideoMode desktop = sf::VideoMode::getDesktopMode();
     _window.create(desktop, "Go Safe", sf::Style::Default);
 
-    // Define your design resolution.
+    MusicPlayer::getInstance().addSong("hop", "../assets/Sound/jump.mp3");
+    MusicPlayer::getInstance().addSong("run", "../assets/Sound/run.mp3");
+
+
+
+
     unsigned int designWidth = 2560;
     unsigned int designHeight = 1600;
 
-    // Create a view for the design resolution.
-    // All game coordinates will now be defined in a 2560x1600 space.
     sf::View view(sf::FloatRect(0.f, 0.f, designWidth, designHeight));
     _window.setView(view);
 
-    // (Optional) Print out the desktop resolution and design resolution for debugging.
     std::cout << "Desktop resolution: " << desktop.width << "x" << desktop.height << std::endl;
     std::cout << "Design resolution: " << designWidth << "x" << designHeight << std::endl;
 
-    // Initialize statistics text (if needed)
     _statisticsText.setFont(Assets::getInstance().getFont("main"));
     _statisticsText.setPosition(15.f, 5.f);
     _statisticsText.setCharacterSize(15);
@@ -45,7 +45,6 @@ void GameEngine::init(const std::string& path)
     // Change to the menu scene.
     changeScene("MENU", std::make_shared<Scene_Menu>(this));
 
-    // ok I have created this but still the other elements are same soze as earlier
 }
 
 void GameEngine::loadConfigFromFile(const std::string &path, unsigned int &width, unsigned int &height) const {
@@ -94,7 +93,6 @@ void GameEngine::sUserInput()
             case sf::Keyboard::Escape:
                 currentScene()->doAction(Command("Escape", "QUIT"));
                 break;
-                // Additionally, your Scene_Menu update() polls W/S etc.
             default:
                 break;
             }

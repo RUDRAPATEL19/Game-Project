@@ -48,7 +48,6 @@ struct Drone {
     float speed;
     DroneState state = DroneState::Following;
     float stateTimer = 0.f;
-    // You can add a laser hitbox if desired:
     sf::RectangleShape laserHitbox;
 };
 
@@ -187,12 +186,11 @@ public:
     float scaleFactorY = 1600.f / 600.f; // approx 2.67
 
 
+    bool jumpSoundPlayed = false;
 
     int m_lives;
     void resetPlayer();
     sf::Vector2f originalStartPosition;
-
-    std::string getHoverMessage();
 
     void init(const std::string& path);
     void initTrafficSignals();

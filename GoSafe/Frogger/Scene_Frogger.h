@@ -155,7 +155,6 @@ private:
 
 bool                gameFinished = false;        
 int                 finishOption = 0;             
-bool                puzzleCheckTriggered = false;
 
 
     void            killPlayer();
@@ -185,6 +184,7 @@ public:
     float scaleFactorX = 2560.f / 480.f; // approx 5.33
     float scaleFactorY = 1600.f / 600.f; // approx 2.67
 
+    int currentLevel;
 
     bool jumpSoundPlayed = false;
 

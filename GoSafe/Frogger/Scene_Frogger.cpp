@@ -8,6 +8,11 @@
 Scene_Frogger::Scene_Frogger(GameEngine* gameEngine, const std::string& levelPath)
     : Scene(gameEngine)
 {
+    if (levelPath.find("level2.txt") != std::string::npos)
+        currentLevel = 2;
+    else
+        currentLevel = 1;
+
     init(levelPath);
 }
 
@@ -34,7 +39,7 @@ void Scene_Frogger::init(const std::string& path)
     sf::FloatRect playerBounds = playerSprite.getLocalBounds();
     playerSprite.setOrigin(playerBounds.width / 2.f, playerBounds.height / 2.f);
     float playerX = designWidth / 2.f;
-    float playerY = designHeight - playerBounds.height / 2.f;
+    float playerY = designHeight - playerBounds.height / 2.f - 85.f;
     playerSprite.setPosition(playerX, playerY);
     playerSprite.setScale(scaleFactorX, scaleFactorY);
     startPosition = playerSprite.getPosition();
@@ -165,26 +170,33 @@ void cycleState(TrafficSignal& signal) {
 
 void Scene_Frogger::initTrafficSignals() {
     TrafficSignal signal1;
-    signal1.sprite.setTexture(Assets::getInstance().getTexture("Entities"));
-    signal1.sprite.setTextureRect(sf::IntRect(16, 10, 37, 42));
+    // Use the "goSafe" texture (make sure it's loaded via Assets).
+    signal1.sprite.setTexture(Assets::getInstance().getTexture("goSafe"));
+    // Initialize with the green signal texture rectangle.
+    signal1.sprite.setTextureRect(sf::IntRect(114, 193, 30, 63));
 
+    // Center the origin of the sprite.
     sf::FloatRect bounds = signal1.sprite.getLocalBounds();
     signal1.sprite.setOrigin(bounds.width / 2.f, bounds.height / 2.f);
 
-    signal1.sprite.setColor(sf::Color::Magenta);
-
+    // Position the signal; for example, near the bottom left.
     const sf::Vector2u winSize = _game->window().getSize();
     float posX = 50.f;
     float posY = winSize.y * 0.805f;
     signal1.sprite.setPosition(posX, posY);
 
-    signal1.state = SignalState::Green;
-    signal1.sequenceOrder = 1;
+    // Initialize signal state parameters.
+    signal1.state = SignalState::Green;   // Start at Green.
+    signal1.stateTimer = 0.f;               // Reset timer.
+
+    // Since you no longer need puzzle-based control, remove or ignore activated.
     signal1.activated = false;
+    signal1.sequenceOrder = 1;   // You can keep this or remove if not needed.
 
+    // Push the signal into the vector.
     trafficSignals.push_back(signal1);
-
 }
+
 
 float distance(const sf::Vector2f& a, const sf::Vector2f& b) {
     sf::Vector2f diff = a - b;
@@ -279,6 +291,12 @@ void Scene_Frogger::update(sf::Time dt)
     static float runSoundTimer = 0.f;
     const float runSoundInterval = 0.3f; // Adjust as needed
 
+    if (sf::Keyboard::isKeyPressed(sf::Keyboard::Escape))
+    {
+        _game->changeScene("MENU", std::make_shared<Scene_Menu>(_game), true);
+        return;
+    }
+
     if (sf::Keyboard::isKeyPressed(sf::Keyboard::W) ||
         sf::Keyboard::isKeyPressed(sf::Keyboard::A) ||
         sf::Keyboard::isKeyPressed(sf::Keyboard::S) ||
@@ -309,16 +327,24 @@ void Scene_Frogger::update(sf::Time dt)
 
     if (gameOver || gameFinished)
     {
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Escape))
+        {
+            // Return to main menu.
+            std::cout << "ESC pressed: Returning to Main Menu" << std::endl;
+            _game->changeScene("MENU", std::make_shared<Scene_Menu>(_game), true);
+            return;  // Skip further processing.
+        }
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::W) || sf::Keyboard::isKeyPressed(sf::Keyboard::Up))
         {
-            finishOption = 0;  // select "Play Again"
+            finishOption = 0;  // Choose "Play Again"
         }
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::S) || sf::Keyboard::isKeyPressed(sf::Keyboard::Down))
         {
-            finishOption = 1;  // select "Back To Menu"
+            finishOption = 1;  // Choose "Back To Menu"
         }
 
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Return))  // Enter key
+        // Process the Enter key.
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Return))
         {
             if (finishOption == 0)
             {
@@ -331,9 +357,11 @@ void Scene_Frogger::update(sf::Time dt)
                 _game->changeScene("MENU", std::make_shared<Scene_Menu>(_game), true);
             }
         }
-
-        return;
+        return; // Skip further update processing.
     }
+
+
+
 
 
     // --- Power-Up Spawn Check (Safe River) ---
@@ -402,53 +430,65 @@ void Scene_Frogger::update(sf::Time dt)
         movement.x += moveSpeed * dt.asSeconds();
     playerSprite.move(movement);
 
-    // --- Traffic Signal Interaction ---
+
+    // --- Update Traffic Signals ---
     for (auto& signal : trafficSignals)
     {
-        if (playerSprite.getGlobalBounds().intersects(signal.sprite.getGlobalBounds()))
+        signal.stateTimer += dt.asSeconds();
+
+        if (signal.state == SignalState::Green && signal.stateTimer >= 6.f)
         {
-            if (sf::Keyboard::isKeyPressed(sf::Keyboard::E))
-            {
-                if (!signal.activated)
-                {
-                    cycleState(signal);
-                    signal.activated = true;
-                    puzzleCheckTriggered = true;
-                    std::cout << "Signal " << signal.sequenceOrder << " toggled." << std::endl;
-                }
-            }
-            else
-            {
-                signal.activated = false;
-            }
+            signal.state = SignalState::Yellow;
+            signal.stateTimer = 0.f;
+            signal.sprite.setTextureRect(sf::IntRect(30, 192, 30, 64));
+        }
+        else if (signal.state == SignalState::Yellow && signal.stateTimer >= 4.f)
+        {
+            signal.state = SignalState::Red;
+            signal.stateTimer = 0.f;
+            signal.sprite.setTextureRect(sf::IntRect(73, 192, 29, 62));
+        }
+        else if (signal.state == SignalState::Red && signal.stateTimer >= 2.f)
+        {
+            signal.state = SignalState::Green;
+            signal.stateTimer = 0.f;
+            signal.sprite.setTextureRect(sf::IntRect(114, 193, 30, 63));
         }
     }
 
-    // --- Check Puzzle Sequence Only When Player Submits ---
-    if (puzzleCheckTriggered && sf::Keyboard::isKeyPressed(sf::Keyboard::X))
+    // --- Determine Global Speed Multiplier ---
+    float speedMultiplier = 1.0f;
+    bool anyRed = false;
+    bool anyYellow = false;
+    for (const auto& signal : trafficSignals)
     {
-        std::cout << "X pressed: Checking signal state..." << std::endl;
-        bool puzzleSolved = true;
-        for (const auto& signal : trafficSignals)
+        if (signal.state == SignalState::Red)
         {
-            if (signal.state != SignalState::Red)
-            {
-                puzzleSolved = false;
-                break;
-            }
+            anyRed = true;
+            break;
         }
-        if (puzzleSolved)
-        {
-            std::cout << "Correct sequence! Safe passage activated." << std::endl;
-            safePassageActivated = true;
-            safePassageTimer = 0.f;
-        }
-        else
-        {
-            std::cout << "Incorrect sequence. Try again." << std::endl;
-        }
-        puzzleCheckTriggered = false;
+        else if (signal.state == SignalState::Yellow)
+            anyYellow = true;
     }
+    if (anyRed)
+        speedMultiplier = 0.0f;
+    else if (anyYellow)
+        speedMultiplier = 0.5f;
+
+    // --- Update Enemy Cars (Single Loop) ---
+    for (auto& car : enemyCars)
+    {
+        car.sprite.move(car.speed * speedMultiplier * dt.asSeconds(), 0.f);
+
+        sf::FloatRect carBounds = car.sprite.getGlobalBounds();
+        if (car.speed > 0 && carBounds.left > _game->window().getSize().x)
+            car.sprite.setPosition(-carBounds.width, car.sprite.getPosition().y);
+        else if (car.speed < 0 && (carBounds.left + carBounds.width) < 0)
+            car.sprite.setPosition(_game->window().getSize().x, car.sprite.getPosition().y);
+    }
+
+
+
 
 
     // --- Jump Mechanic ---
@@ -570,8 +610,6 @@ void Scene_Frogger::update(sf::Time dt)
     }
 
 
-
-
     const float designWidth = 2560.f;
     const float designHeight = 1600.f;
 
@@ -588,7 +626,7 @@ void Scene_Frogger::update(sf::Time dt)
     const float clearance = 100.f;
 
     // Increase spawn probability values as desired.
-    float vehicleSpawnChance = 0.05f; 
+    float vehicleSpawnChance = (currentLevel == 2) ? 0.10f : 0.05f;
     float logSpawnChance = 0.02f; 
     float enemySpawnChance = 0.05f;
 
@@ -633,7 +671,7 @@ void Scene_Frogger::update(sf::Time dt)
     // --- Spawn Logs ---
     if (static_cast<float>(std::rand()) / RAND_MAX < logSpawnChance * dt.asSeconds())
     {
-        int lane = std::rand() % 2;  // 0 for upper lane, 1 for lower lane
+        int lane = std::rand() % 2;
         float logY;
         if (lane == 0) {
             // Upper lane: add extra safe jump offset
@@ -694,27 +732,50 @@ void Scene_Frogger::update(sf::Time dt)
     }
 
     // --- Safe Passage Effect on Enemy Cars ---
-    if (safePassageActivated)
-    {
-        safePassageTimer += dt.asSeconds();
-        if (safePassageTimer >= safePassageDuration)
-        {
-            safePassageActivated = false;
-            safePassageTimer = 0.f;
-            std::cout << "Safe passage ended." << std::endl;
-        }
-    }
+    // Define a tolerance for checking if a car is in the same lane as a traffic signal.
+    const float signalTolerance = 50.f;
+
     for (auto& car : enemyCars)
     {
-        float speedMultiplier = safePassageActivated ? 0.0f : 1.0f;
-        car.sprite.move(car.speed * speedMultiplier * dt.asSeconds(), 0.f);
+        // Default speed multiplier is 1 (full speed)
+        float speedMultiplier = 1.0f;
 
-        sf::FloatRect carBounds = car.sprite.getGlobalBounds();
-        if (car.speed > 0 && carBounds.left > winSize.x)
-            car.sprite.setPosition(-carBounds.width, car.sprite.getPosition().y);
-        else if (car.speed < 0 && (carBounds.left + carBounds.width) < 0)
-            car.sprite.setPosition(winSize.x, car.sprite.getPosition().y);
+        // Check each traffic signal
+        for (const auto& signal : trafficSignals)
+        {
+            if (signal.state == SignalState::Red)
+            {
+                anyRed = true;
+                break;  // Red overrides yellow.
+            }
+            else if (signal.state == SignalState::Yellow)
+            {
+                anyYellow = true;
+            }
+        }
+
+        if (anyRed)
+            speedMultiplier = 0.0f;  // Stop all cars if any signal is red.
+        else if (anyYellow)
+            speedMultiplier = 0.5f;  // Slow all cars if at least one is yellow.
+
+        // --- Update Enemy Car Movement ---
+        for (auto& car : enemyCars)
+        {
+            // Move each car horizontally using its base speed multiplied by the global speedMultiplier.
+            car.sprite.move(car.speed * speedMultiplier * dt.asSeconds(), 0.f);
+
+            // Wrap around logic: if the car goes off-screen, reposition it.
+            sf::FloatRect carBounds = car.sprite.getGlobalBounds();
+            if (car.speed > 0 && carBounds.left > _game->window().getSize().x)
+                car.sprite.setPosition(-carBounds.width, car.sprite.getPosition().y);
+            else if (car.speed < 0 && (carBounds.left + carBounds.width) < 0)
+                car.sprite.setPosition(_game->window().getSize().x, car.sprite.getPosition().y);
+        }
     }
+
+
+
 
         
     // --- Update Logs ---
@@ -855,10 +916,6 @@ void Scene_Frogger::sRender() {
         }
     }
 
-    // Draw the score.
-    sf::Text scoreText("Score: 100", Assets::getInstance().getFont("main"), 20);
-    scoreText.setPosition(10.f, 10.f);
-    _game->window().draw(scoreText);
 
     // Draw Power-Up Status.
     sf::Text powerUpText;
@@ -877,67 +934,87 @@ void Scene_Frogger::sRender() {
 
     if (gameOver || gameFinished)
     {
-        // Draw a semi-transparent overlay.
+        sf::Vector2u winSize = _game->window().getSize();
+
+        // --- Draw a semi-transparent overlay
         sf::RectangleShape overlay;
-        overlay.setSize(sf::Vector2f(_game->window().getSize()));
-        overlay.setFillColor(sf::Color(0, 0, 0, 150));
+        overlay.setSize(sf::Vector2f(winSize));
+        overlay.setFillColor(sf::Color(0, 0, 0, 200)); // More opaque than before
         _game->window().draw(overlay);
 
-        // Prepare final message text:
+        // --- Draw the Final Message (Game Over or You Won!)
         sf::Text finalText;
         finalText.setFont(Assets::getInstance().getFont("main"));
         finalText.setStyle(sf::Text::Bold);
-        finalText.setOutlineThickness(2.f);
+        finalText.setOutlineThickness(4.f);
         finalText.setOutlineColor(sf::Color::Black);
+        finalText.setCharacterSize(160);  // Double the normal size—for emphasis
 
-        // Set text for win or game over:
-        if (gameFinished)
-        {
-            finalText.setString("You Won!");
-            finalText.setFillColor(sf::Color::Yellow);
-        }
-        else
+        if (gameOver)
         {
             finalText.setString("Game Over");
             finalText.setFillColor(sf::Color::Red);
         }
-        finalText.setCharacterSize(80);
-
-        // Center the final message:
+        else
+        {
+            finalText.setString("You Won!");
+            finalText.setFillColor(sf::Color::Yellow);
+        }
         sf::FloatRect finalBounds = finalText.getLocalBounds();
         finalText.setOrigin(finalBounds.left + finalBounds.width / 2.f,
             finalBounds.top + finalBounds.height / 2.f);
-        finalText.setPosition(_game->window().getSize().x / 2.f,
-            _game->window().getSize().y / 3.f);
+        finalText.setPosition(winSize.x / 2.f, winSize.y / 3.f);
         _game->window().draw(finalText);
 
-        sf::Text optionsText;
-        optionsText.setFont(Assets::getInstance().getFont("main"));
-        optionsText.setStyle(sf::Text::Bold);
-        optionsText.setOutlineThickness(1.5f);
-        optionsText.setOutlineColor(sf::Color::Black);
-        optionsText.setCharacterSize(48);   
+        // --- Draw the Selectable Options ---
+        sf::Text selectionText;
+        selectionText.setFont(Assets::getInstance().getFont("main"));
+        selectionText.setStyle(sf::Text::Bold);
+        selectionText.setOutlineThickness(1.5f);
+        selectionText.setOutlineColor(sf::Color::Black);
+        selectionText.setCharacterSize(80);
 
-        std::string optionString;
+        std::string playOpt, menuOpt;
         if (finishOption == 0)
-            optionString = "> Play Again <\n  Back To Menu";
+        {
+            playOpt = "> Play Again <";
+            menuOpt = "  Back To Menu";
+        }
         else
-            optionString = "  Play Again\n> Back To Menu <";
-        optionsText.setString(optionString);
+        {
+            playOpt = "  Play Again";
+            menuOpt = "> Back To Menu <";
+        }
+        // Combine into a two-line string:
+        std::string selectionStr = playOpt + "\n" + menuOpt;
+        selectionText.setString(selectionStr);
 
-        // Center the options text.
-        sf::FloatRect optBounds = optionsText.getLocalBounds();
-        optionsText.setOrigin(optBounds.left + optBounds.width / 2.f,
-            optBounds.top + optBounds.height / 2.f);
-        optionsText.setPosition(_game->window().getSize().x / 2.f,
-            _game->window().getSize().y * 0.6f);
-        _game->window().draw(optionsText);
+        sf::FloatRect selBounds = selectionText.getLocalBounds();
+        selectionText.setOrigin(selBounds.left + selBounds.width / 2.f,
+            selBounds.top + selBounds.height / 2.f);
+        selectionText.setPosition(winSize.x / 2.f, winSize.y * 0.55f);
+        _game->window().draw(selectionText);
 
-        return; // Skip further updates/draws when in end state
+        sf::Text instructionsText;
+        instructionsText.setFont(Assets::getInstance().getFont("main"));
+        instructionsText.setStyle(sf::Text::Bold);
+        instructionsText.setOutlineThickness(1.5f);
+        instructionsText.setOutlineColor(sf::Color::Black);
+        instructionsText.setCharacterSize(48);
+
+        if (gameOver)
+            instructionsText.setString("W/S: Navigate    Enter: Try Again    Esc: Quit");
+        else
+            instructionsText.setString("W/S: Navigate    Enter: Play Again    Esc: Return to Menu");
+
+        sf::FloatRect instrBounds = instructionsText.getLocalBounds();
+        instructionsText.setOrigin(instrBounds.left + instrBounds.width / 2.f,
+            instrBounds.top + instrBounds.height / 2.f);
+        instructionsText.setPosition(winSize.x / 2.f, winSize.y * 0.7f);
+        _game->window().draw(instructionsText);
+
+        return; // End further drawing in end state.
     }
-
-
-
 
     //_game->window().display();
 }
@@ -1006,6 +1083,7 @@ void Scene_Frogger::spawnEnemyCar(const sf::Vector2f& position, float speed)
     // Apply scaling to match the design resolution.
     car.sprite.setScale(scaleFactorX, scaleFactorY);
     
+
     // Center the sprite.
     sf::FloatRect bounds = car.sprite.getLocalBounds();
     car.sprite.setOrigin(bounds.width / 2.f, bounds.height / 2.f);
@@ -1076,10 +1154,6 @@ void Scene_Frogger::spawnDrone(const sf::Vector2f& position, float speed) {
 }
 
 
-
-
-
-
 void Scene_Frogger::sMovement(sf::Time dt)
 {
 
@@ -1132,7 +1206,6 @@ void Scene_Frogger::killPlayer()
 }
 
 
-
 void Scene_Frogger::sAnimation(sf::Time dt)
 {
     static sf::IntRect walkFrame(12, 1, 28, 63);
@@ -1175,4 +1248,3 @@ void Scene_Frogger::sAnimation(sf::Time dt)
         }
     }
 }
-

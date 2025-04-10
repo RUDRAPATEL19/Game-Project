@@ -1,0 +1,4 @@
+# Level 2
+
+World 480 600
+Bkg Background 0 0

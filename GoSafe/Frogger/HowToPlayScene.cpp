@@ -109,8 +109,8 @@ void HowToPlayScene::sRender()
 
     std::string instrText =
         " Use W, A, S, D or Arrow keys to move.\n\n"
-        " Press Space to jump on logs.\n\n"
-        " Avoid enemy cars and river enemies.\n\n"
+        " Press Space to jump on the boat.\n\n"
+        " Avoid enemy cars and river enemies as well as river.\n\n"
         " Drones will attack with lasers; avoid them.\n\n"
         " Traffic Signals: Press E to toggle state.\n\n"
         " When Red, press X for safe passage.\n\n"

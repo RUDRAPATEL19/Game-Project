@@ -26,7 +26,13 @@ void GameEngine::init(const std::string& path)
     MusicPlayer::getInstance().addSong("hop", "../assets/Sound/jump.mp3");
     MusicPlayer::getInstance().addSong("run", "../assets/Sound/run.mp3");
 
-
+    if (!backgroundMusic.openFromFile("../assets/Music/gosafe.wav"))
+    {
+        std::cerr << "Error: Could not load background music!" << std::endl;
+    }
+    backgroundMusic.setLoop(true);
+    backgroundMusic.setVolume(20.f); // Adjust volume as desired.
+    backgroundMusic.play();
 
 
     unsigned int designWidth = 2560;

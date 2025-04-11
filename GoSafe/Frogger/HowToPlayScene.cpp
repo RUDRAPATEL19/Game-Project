@@ -108,11 +108,11 @@ void HowToPlayScene::sRender()
     instructions.setOutlineColor(sf::Color::Black);
 
     std::string instrText =
-        " Use W, A, S, D or Arrow keys to move.\n\n"
+        " Use W, A, S, D to move.\n\n"
         " Press Space to jump on the boat.\n\n"
         " Avoid enemy cars and river enemies as well as river.\n\n"
         " Drones will attack with lasers; avoid them.\n\n"
-        " Traffic Signals: Press E to toggle state.\n\n"
+        " Traffic Signals: Cars stop at red, slows down when yellow\n\n"
         " When Red, press X for safe passage.\n\n"
         " Reach the top to win the game.\n\n"
         " Press ESC to return to Main Menu.";

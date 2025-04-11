@@ -10,7 +10,7 @@
 
 enum class SignalState { Green, Yellow, Red };
 enum class DroneState { Following, Charging, Firing, Cooldown };
-enum class PlayerAnimState { Walking, Jumping, Dying };
+enum class PlayerAnimState { Idle, Running, Jumping, Sliding, Dying };
 
 struct EnemyCar {
     sf::Sprite sprite;
@@ -170,7 +170,7 @@ int                 finishOption = 0;
 public:
     Scene_Frogger(GameEngine* gameEngine, const std::string& levelPath);
 
-    PlayerAnimState m_playerAnimState = PlayerAnimState::Walking; // default state
+    PlayerAnimState m_playerAnimState = PlayerAnimState::Idle; // default state
     float m_animTimer = 0.f;          // used for dying animation
     int m_dyingFrameIndex = 0;        // Index for the dying animation frame
     float m_dyingTotalTime = 0.f; // Total time elapsed in dying state
@@ -183,7 +183,8 @@ public:
     unsigned int designHeight = 1600;
     float scaleFactorX = 2560.f / 480.f; // approx 5.33
     float scaleFactorY = 1600.f / 600.f; // approx 2.67
-
+    float slideTimer = 0.f;
+    const float slideDuration = 0.5f;
     int currentLevel;
 
     bool jumpSoundPlayed = false;

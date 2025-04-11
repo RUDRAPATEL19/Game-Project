@@ -19,7 +19,7 @@ public:
 	SceneMap			        _sceneMap;
 	size_t				        _simulationSpeed{ 1 };
 	bool				        _running{ true };
-
+	sf::Music backgroundMusic;
 	void						loadConfigFromFile(const std::string &path, unsigned int &width, unsigned int &height) const;
 	void						init(const std::string& path);
 	void						sUserInput();

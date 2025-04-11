@@ -103,8 +103,7 @@ void Scene_Frogger::safeRiver()
 
 void Scene_Frogger::resetPlayer()
 {
-    const float upwardOffset = 220.f;   // amount to move up on each death
-
+    const float upwardOffset = 220.f; 
 
     playerSprite.setPosition(originalStartPosition.x, originalStartPosition.y - upwardOffset);
 
@@ -155,7 +154,6 @@ void cycleState(TrafficSignal& signal) {
     else
         signal.state = SignalState::Green;
 
-    // Set the sprite's color based on the new state:
     if (signal.state == SignalState::Green)
         signal.sprite.setColor(sf::Color::Green);
     else if (signal.state == SignalState::Yellow)
@@ -163,39 +161,46 @@ void cycleState(TrafficSignal& signal) {
     else
         signal.sprite.setColor(sf::Color::Red);
 
-    // Reset any state timer if needed.
     signal.stateTimer = 0.f;
 }
 
 
 void Scene_Frogger::initTrafficSignals() {
+    // --- Signal 1
     TrafficSignal signal1;
-    // Use the "goSafe" texture (make sure it's loaded via Assets).
     signal1.sprite.setTexture(Assets::getInstance().getTexture("goSafe"));
-    // Initialize with the green signal texture rectangle.
     signal1.sprite.setTextureRect(sf::IntRect(114, 193, 30, 63));
-
-    // Center the origin of the sprite.
     sf::FloatRect bounds = signal1.sprite.getLocalBounds();
     signal1.sprite.setOrigin(bounds.width / 2.f, bounds.height / 2.f);
-
-    // Position the signal; for example, near the bottom left.
     const sf::Vector2u winSize = _game->window().getSize();
-    float posX = 50.f;
-    float posY = winSize.y * 0.805f;
-    signal1.sprite.setPosition(posX, posY);
-
-    // Initialize signal state parameters.
-    signal1.state = SignalState::Green;   // Start at Green.
-    signal1.stateTimer = 0.f;               // Reset timer.
-
-    // Since you no longer need puzzle-based control, remove or ignore activated.
+    float posX1 = 50.f;
+    float posY1 = winSize.y * 0.805f;
+    signal1.sprite.setPosition(posX1, posY1);
+    signal1.sprite.setScale(1.5f, 1.5f);
+    signal1.state = SignalState::Green;
+    signal1.stateTimer = 0.f;
     signal1.activated = false;
-    signal1.sequenceOrder = 1;   // You can keep this or remove if not needed.
-
-    // Push the signal into the vector.
+    signal1.sequenceOrder = 1;
     trafficSignals.push_back(signal1);
+
+    // --- Signal
+    TrafficSignal signal2;
+    signal2.sprite.setTexture(Assets::getInstance().getTexture("goSafe"));
+    signal2.sprite.setTextureRect(sf::IntRect(114, 193, 30, 63)); 
+    bounds = signal2.sprite.getLocalBounds();
+    signal2.sprite.setOrigin(bounds.width / 2.f, bounds.height / 2.f);
+    float posX2 = 50.f;      
+    float posY2 = winSize.y * 0.15f;
+    signal2.sprite.setPosition(posX2, posY2);
+    signal2.sprite.setScale(1.5f, 1.5f);
+    signal2.state = SignalState::Green;
+    signal2.stateTimer = 0.f;
+    signal2.activated = false;
+    signal2.sequenceOrder = 2;
+    trafficSignals.push_back(signal2);
 }
+
+
 
 
 float distance(const sf::Vector2f& a, const sf::Vector2f& b) {
@@ -226,18 +231,26 @@ void updateDrone(Drone& drone, sf::Time dt, const sf::Vector2u& winSize, const s
     {
     case DroneState::Following:
     {
-        if (std::abs(dx) <= alignmentThreshold && dronePos.y < playerPos.y) {
+        const float verticalOffset = 100.f; 
+        sf::Vector2f adjustedPlayerPos = playerPos - sf::Vector2f(0.f, verticalOffset);
+
+        float dx = adjustedPlayerPos.x - dronePos.x;
+        float dy = adjustedPlayerPos.y - dronePos.y;
+        float dist = std::sqrt(dx * dx + dy * dy);
+
+        if (std::abs(dx) <= alignmentThreshold && dronePos.y < adjustedPlayerPos.y) {
             drone.state = DroneState::Charging;
             drone.stateTimer = 0.f;
         }
         else {
             if (dist != 0.f) {
-                sf::Vector2f direction = (playerPos - dronePos) / dist;
+                sf::Vector2f direction = (adjustedPlayerPos - dronePos) / dist;
                 drone.sprite.move(direction * (drone.speed * 2.f) * dt.asSeconds());
             }
         }
         break;
     }
+
     case DroneState::Charging:
     {
         drone.stateTimer += dt.asSeconds();
@@ -245,7 +258,7 @@ void updateDrone(Drone& drone, sf::Time dt, const sf::Vector2u& winSize, const s
             drone.state = DroneState::Firing;
             drone.stateTimer = 0.f;
             // Initialize laser hitbox:
-            drone.laserHitbox.setSize(sf::Vector2f(60.f, 200.f));
+            drone.laserHitbox.setSize(sf::Vector2f(80.f, 200.f));
             drone.laserHitbox.setFillColor(sf::Color(255, 0, 0, 200));
             drone.laserHitbox.setOrigin(drone.laserHitbox.getSize().x / 2.f, 0.f);
             drone.laserHitbox.setPosition(drone.sprite.getPosition());
@@ -255,7 +268,7 @@ void updateDrone(Drone& drone, sf::Time dt, const sf::Vector2u& winSize, const s
     case DroneState::Firing:
     {
         drone.stateTimer += dt.asSeconds();
-        float laserOffsetY = 20.f;
+        float laserOffsetY = 42.f;
         drone.laserHitbox.setPosition(drone.sprite.getPosition().x,
             drone.sprite.getPosition().y + laserOffsetY);
         if (playerSprite.getGlobalBounds().intersects(drone.laserHitbox.getGlobalBounds())) {
@@ -428,7 +441,18 @@ void Scene_Frogger::update(sf::Time dt)
         movement.x -= moveSpeed * dt.asSeconds();
     if (sf::Keyboard::isKeyPressed(sf::Keyboard::D))
         movement.x += moveSpeed * dt.asSeconds();
+
     playerSprite.move(movement);
+
+    // Set player animation state based on movement (if not jumping or dying)
+    if (!isJumping && m_playerAnimState != PlayerAnimState::Dying)
+    {
+        if (movement != sf::Vector2f(0.f, 0.f))
+            m_playerAnimState = PlayerAnimState::Running;
+        else
+            m_playerAnimState = PlayerAnimState::Idle;
+    }
+
 
 
     // --- Update Traffic Signals ---
@@ -436,13 +460,13 @@ void Scene_Frogger::update(sf::Time dt)
     {
         signal.stateTimer += dt.asSeconds();
 
-        if (signal.state == SignalState::Green && signal.stateTimer >= 6.f)
+        if (signal.state == SignalState::Green && signal.stateTimer >= 3.f)
         {
             signal.state = SignalState::Yellow;
             signal.stateTimer = 0.f;
             signal.sprite.setTextureRect(sf::IntRect(30, 192, 30, 64));
         }
-        else if (signal.state == SignalState::Yellow && signal.stateTimer >= 4.f)
+        else if (signal.state == SignalState::Yellow && signal.stateTimer >= 2.f)
         {
             signal.state = SignalState::Red;
             signal.stateTimer = 0.f;
@@ -456,24 +480,27 @@ void Scene_Frogger::update(sf::Time dt)
         }
     }
 
+
     // --- Determine Global Speed Multiplier ---
     float speedMultiplier = 1.0f;
     bool anyRed = false;
     bool anyYellow = false;
+
     for (const auto& signal : trafficSignals)
     {
-        if (signal.state == SignalState::Red)
-        {
+        if (signal.state == SignalState::Red) {
             anyRed = true;
-            break;
+            break;  // Red overrides yellow.
         }
-        else if (signal.state == SignalState::Yellow)
+        else if (signal.state == SignalState::Yellow) {
             anyYellow = true;
+        }
     }
     if (anyRed)
         speedMultiplier = 0.0f;
     else if (anyYellow)
         speedMultiplier = 0.5f;
+
 
     // --- Update Enemy Cars (Single Loop) ---
     for (auto& car : enemyCars)
@@ -531,7 +558,7 @@ void Scene_Frogger::update(sf::Time dt)
             isJumping = false;
             newPos.y = jumpStartPosition.y - jumpForward;
             playerSprite.setPosition(newPos);
-            m_playerAnimState = PlayerAnimState::Walking;
+            m_playerAnimState = PlayerAnimState::Idle;
         }
     }
 
@@ -586,12 +613,13 @@ void Scene_Frogger::update(sf::Time dt)
         onLog = false;
     }
 
-    // --- River Collision Check ---
+    // --- River Collision Check --- 
     if (!isJumping && !gameFinished && m_playerAnimState != PlayerAnimState::Dying)
     {
         float riverTop = winSize.y * 0.35f;
         float riverBottom = winSize.y * 0.65f;
         float playerCenterY = playerSprite.getGlobalBounds().top + playerSprite.getGlobalBounds().height / 2.f;
+
         if (playerCenterY >= riverTop && playerCenterY <= riverBottom && !onLog)
         {
             if (hasSafeRiver && sf::Keyboard::isKeyPressed(sf::Keyboard::Z))
@@ -600,6 +628,8 @@ void Scene_Frogger::update(sf::Time dt)
                 safeRiver();
                 hasSafeRiver = false;
                 safeRiverTimer = 0.f;
+                std::cout << "Player sliding in river!" << std::endl;
+                m_playerAnimState = PlayerAnimState::Sliding;
             }
             else if (!hasSafeRiver)
             {
@@ -608,6 +638,7 @@ void Scene_Frogger::update(sf::Time dt)
             }
         }
     }
+
 
 
     const float designWidth = 2560.f;
@@ -732,21 +763,18 @@ void Scene_Frogger::update(sf::Time dt)
     }
 
     // --- Safe Passage Effect on Enemy Cars ---
-    // Define a tolerance for checking if a car is in the same lane as a traffic signal.
     const float signalTolerance = 50.f;
 
     for (auto& car : enemyCars)
     {
-        // Default speed multiplier is 1 (full speed)
         float speedMultiplier = 1.0f;
 
-        // Check each traffic signal
         for (const auto& signal : trafficSignals)
         {
             if (signal.state == SignalState::Red)
             {
                 anyRed = true;
-                break;  // Red overrides yellow.
+                break;
             }
             else if (signal.state == SignalState::Yellow)
             {
@@ -755,17 +783,15 @@ void Scene_Frogger::update(sf::Time dt)
         }
 
         if (anyRed)
-            speedMultiplier = 0.0f;  // Stop all cars if any signal is red.
+            speedMultiplier = 0.0f;  
         else if (anyYellow)
-            speedMultiplier = 0.5f;  // Slow all cars if at least one is yellow.
+            speedMultiplier = 0.5f;  
 
         // --- Update Enemy Car Movement ---
         for (auto& car : enemyCars)
         {
-            // Move each car horizontally using its base speed multiplied by the global speedMultiplier.
             car.sprite.move(car.speed * speedMultiplier * dt.asSeconds(), 0.f);
 
-            // Wrap around logic: if the car goes off-screen, reposition it.
             sf::FloatRect carBounds = car.sprite.getGlobalBounds();
             if (car.speed > 0 && carBounds.left > _game->window().getSize().x)
                 car.sprite.setPosition(-carBounds.width, car.sprite.getPosition().y);
@@ -1112,7 +1138,7 @@ void Scene_Frogger::spawnLog(const sf::Vector2f& position, float speed)
     logs.push_back(log);
 }
 
-const sf::Vector2f Scene_Frogger::SAFE_RIVER_SCALE(1.0f, 1.0f);
+const sf::Vector2f Scene_Frogger::SAFE_RIVER_SCALE(1.5f, 1.5f);
 const sf::Vector2f Scene_Frogger::RIVER_ENEMY_SCALE(1.5f, 1.5f);
 
 
@@ -1138,8 +1164,8 @@ void Scene_Frogger::spawnRiverEnemy(const sf::Vector2f& position, float speed)
 
 void Scene_Frogger::spawnDrone(const sf::Vector2f& position, float speed) {
     Drone drone;
-    drone.sprite.setTexture(Assets::getInstance().getTexture("Entities"));
-    drone.sprite.setTextureRect(sf::IntRect(60, 193, 65, 35));
+    drone.sprite.setTexture(Assets::getInstance().getTexture("goSafe"));
+    drone.sprite.setTextureRect(sf::IntRect(19, 81, 57, 68));
     sf::FloatRect bounds = drone.sprite.getLocalBounds();
     drone.sprite.setOrigin(bounds.width / 2.f, bounds.height / 2.f);
     drone.sprite.setPosition(position);
@@ -1208,43 +1234,68 @@ void Scene_Frogger::killPlayer()
 
 void Scene_Frogger::sAnimation(sf::Time dt)
 {
-    static sf::IntRect walkFrame(12, 1, 28, 63);
+    static sf::IntRect idleFrame(12, 1, 28, 63);
+    static sf::IntRect runningFrames[2] = {
+        sf::IntRect(12, 1, 28, 63),
+        sf::IntRect(50, 1, 28, 63)
+    };
     static sf::IntRect jumpFrame(55, 0, 27, 64);
+    static sf::IntRect slidingFrame(152,25, 38, 32);  // Adjust these coordinates to your sliding sprite area
     static sf::IntRect dyingFrames[2] = {
         sf::IntRect(103, 2, 28, 62),
         sf::IntRect(152, 25, 38, 32)
     };
 
+    // Timers for running and dying animations.
+    static float runAnimTimer = 0.f;
+    static int runFrameIndex = 0;
+    const float runFrameDuration = 0.1f;
     const float dyingFrameDuration = 0.1f;
     const float totalDyingDuration = 0.2f;
 
     switch (m_playerAnimState)
     {
-        case PlayerAnimState::Walking:
-            playerSprite.setTexture(Assets::getInstance().getTexture("goSafe"));
-            playerSprite.setTextureRect(walkFrame);
-            break;
-        case PlayerAnimState::Jumping:
-            playerSprite.setTexture(Assets::getInstance().getTexture("goSafe"));
-            playerSprite.setTextureRect(jumpFrame);
-            break;
-        case PlayerAnimState::Dying:
+    case PlayerAnimState::Idle:
+        playerSprite.setTexture(Assets::getInstance().getTexture("goSafe"));
+        playerSprite.setTextureRect(idleFrame);
+        break;
+
+    case PlayerAnimState::Running:
+        runAnimTimer += dt.asSeconds();
+        if (runAnimTimer >= runFrameDuration)
         {
-            m_animTimer += dt.asSeconds();
-            m_dyingTotalTime += dt.asSeconds();
-            if (m_animTimer >= dyingFrameDuration)
-            {
-                m_animTimer = 0.f;
-                m_dyingFrameIndex = (m_dyingFrameIndex + 1) % 2;
-            }
-            playerSprite.setTexture(Assets::getInstance().getTexture("goSafe"));
-            playerSprite.setTextureRect(dyingFrames[m_dyingFrameIndex]);
-            if (m_dyingTotalTime >= totalDyingDuration)
-            {
-                killPlayer();
-                return;
-            }
-            break;
+            runAnimTimer = 0.f;
+            runFrameIndex = (runFrameIndex + 1) % 2;
         }
+        playerSprite.setTexture(Assets::getInstance().getTexture("goSafe"));
+        playerSprite.setTextureRect(runningFrames[runFrameIndex]);
+        break;
+
+    case PlayerAnimState::Jumping:
+        playerSprite.setTexture(Assets::getInstance().getTexture("goSafe"));
+        playerSprite.setTextureRect(jumpFrame);
+        break;
+
+    case PlayerAnimState::Sliding:
+        playerSprite.setTexture(Assets::getInstance().getTexture("goSafe"));
+        playerSprite.setTextureRect(slidingFrame);
+        break;
+
+    case PlayerAnimState::Dying:
+        m_animTimer += dt.asSeconds();
+        m_dyingTotalTime += dt.asSeconds();
+        if (m_animTimer >= dyingFrameDuration)
+        {
+            m_animTimer = 0.f;
+            m_dyingFrameIndex = (m_dyingFrameIndex + 1) % 2;
+        }
+        playerSprite.setTexture(Assets::getInstance().getTexture("goSafe"));
+        playerSprite.setTextureRect(dyingFrames[m_dyingFrameIndex]);
+        if (m_dyingTotalTime >= totalDyingDuration)
+        {
+            killPlayer();
+            return;
+        }
+        break;
     }
 }

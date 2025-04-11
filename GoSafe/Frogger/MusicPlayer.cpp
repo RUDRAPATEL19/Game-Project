@@ -8,7 +8,6 @@
 
 
 MusicPlayer::MusicPlayer() {
-    _filenames["menuTheme"] = "../assets/Music/gosafe.wav";
     _filenames["gameTheme"] = "../assets/Music/gosafe.wav";
 }
 
@@ -22,8 +21,7 @@ MusicPlayer& MusicPlayer::getInstance() {
 }
 
 
-void MusicPlayer::play(const std::string& theme, bool loop)
-{
+void MusicPlayer::play(const std::string& theme, bool loop) {
     std::string path = _filenames[theme];
     if (!_music.openFromFile(path))
         throw std::runtime_error("Music could not open file: " + path);
@@ -32,6 +30,7 @@ void MusicPlayer::play(const std::string& theme, bool loop)
     _music.setLoop(loop);
     _music.play();
 }
+
 
 
 

@@ -118,8 +118,6 @@ void Scene_Frogger::resetPlayer()
 
 
 
-
-
 void Scene_Frogger::loadBackground()
 {
     if (!backgroundTexture.loadFromFile("../assets/Textures/background01.png")) {
@@ -271,9 +269,7 @@ void updateDrone(Drone& drone, sf::Time dt, const sf::Vector2u& winSize, const s
         float laserOffsetY = 42.f;
         drone.laserHitbox.setPosition(drone.sprite.getPosition().x,
             drone.sprite.getPosition().y + laserOffsetY);
-        if (playerSprite.getGlobalBounds().intersects(drone.laserHitbox.getGlobalBounds())) {
-            scene->handleDroneHit();
-        }
+        
         if (drone.stateTimer >= fireDuration) {
             drone.state = DroneState::Cooldown;
             drone.stateTimer = 0.f;
@@ -616,8 +612,8 @@ void Scene_Frogger::update(sf::Time dt)
     // --- River Collision Check --- 
     if (!isJumping && !gameFinished && m_playerAnimState != PlayerAnimState::Dying)
     {
-        float riverTop = winSize.y * 0.35f;
-        float riverBottom = winSize.y * 0.65f;
+        float riverTop = winSize.y * 0.32f;
+        float riverBottom = winSize.y * 0.62f;
         float playerCenterY = playerSprite.getGlobalBounds().top + playerSprite.getGlobalBounds().height / 2.f;
 
         if (playerCenterY >= riverTop && playerCenterY <= riverBottom && !onLog)
@@ -1187,34 +1183,64 @@ void Scene_Frogger::sMovement(sf::Time dt)
 
 void Scene_Frogger::sCollisions(sf::Time dt)
 {
-    bool collisionDetected = false;
+    // player leg bounds
+    auto full = playerSprite.getGlobalBounds();
+    const float legPortion = 0.25f;
+    sf::FloatRect legBox{
+        full.left,
+        full.top + full.height * (1.f - legPortion),
+        full.width,
+        full.height * legPortion
+    };
 
-    for (const auto& car : enemyCars)
+    bool collision = false;
+    for (auto& car : enemyCars)
     {
-        if (playerSprite.getGlobalBounds().intersects(car.sprite.getGlobalBounds()))
+        if (legBox.intersects(car.sprite.getGlobalBounds()))
         {
-            collisionDetected = true;
+            collision = true;
             break;
         }
     }
 
-    if (!collisionDetected) {
-        for (const auto& enemy : riverEnemies)
+    if (!collision)
+    {
+        for (auto& enemy : riverEnemies)
         {
-            if (playerSprite.getGlobalBounds().intersects(enemy.sprite.getGlobalBounds()))
+            if (legBox.intersects(enemy.sprite.getGlobalBounds()))
             {
-                collisionDetected = true;
+                collision = true;
                 break;
             }
         }
     }
 
-    if (collisionDetected)
+    // Drone’s laser check
+    for (auto& drone : drones)
     {
-        triggerDeath();
-        return;
+        if (drone.state == DroneState::Firing)
+        {
+            // only bottom 10% of the laser hurts
+            auto fl = drone.laserHitbox.getGlobalBounds();
+            const float killPortion = 0.10f;
+            sf::FloatRect killBox{
+                fl.left,
+                fl.top + fl.height * (1.f - killPortion),
+                fl.width,
+                fl.height * killPortion
+            };
+
+            if (legBox.intersects(killBox))
+            {
+                collision = true;
+                break;
+            }
+        }
     }
+    if (collision)
+        triggerDeath();
 }
+
 
 
 //void Scene_Frogger::update(sf::Time dt)

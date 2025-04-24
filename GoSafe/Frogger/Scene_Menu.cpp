@@ -29,8 +29,8 @@ void Scene_Menu::init()
     _title = "Go Safe!";
 
     _menuStrings.clear();
-    _menuStrings.push_back("Level 1");
-    _menuStrings.push_back("Level 2");
+    _menuStrings.push_back("Easy");
+    _menuStrings.push_back("Hard");
     _menuStrings.push_back("How To Play");
 
     _levelPaths.clear();

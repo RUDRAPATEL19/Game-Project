@@ -74,9 +74,15 @@ private:
 
     void spawnSafeRiver(const sf::Vector2f& position, float speed);
 
+    std::string _levelPath;
+
     sPtrEntt        m_player{ nullptr };
     sf::View        m_worldView;
     sf::FloatRect   m_worldBounds;
+
+    bool    _waitingToRespawn = false;
+    float   _respawnDelayTimer = 0.f;
+    constexpr static float RESPWAN_DELAY = 2.f;
 
     sf::Vector2f startPosition; 
     int gameOverOption = 0;
@@ -88,6 +94,13 @@ private:
     const float jumpForward = 150.f;
     sf::Vector2f jumpStartPosition;
     
+    int m_lives{ 3 };
+    bool    m_playerIsHit = false;
+
+    float getPerspectiveScale(float y);
+    //void drawDebugLanes();
+    bool m_showBoundingBoxes = false;
+
 
     float verticalVelocity = 0.f;
     const float jumpSpeed = -350.f;
@@ -174,7 +187,6 @@ public:
     float m_animTimer = 0.f;          // used for dying animation
     int m_dyingFrameIndex = 0;        // Index for the dying animation frame
     float m_dyingTotalTime = 0.f; // Total time elapsed in dying state
-    bool m_playerIsHit = false;
 
     static const sf::Vector2f SAFE_RIVER_SCALE;
     static const sf::Vector2f RIVER_ENEMY_SCALE;
@@ -189,7 +201,6 @@ public:
 
     bool jumpSoundPlayed = false;
 
-    int m_lives;
     void resetPlayer();
     sf::Vector2f originalStartPosition;
 

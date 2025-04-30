@@ -7,6 +7,7 @@
 
 Scene_Frogger::Scene_Frogger(GameEngine* gameEngine, const std::string& levelPath)
     : Scene(gameEngine)
+    , _levelPath(levelPath)
 {
     if (levelPath.find("level2.txt") != std::string::npos)
         currentLevel = 2;
@@ -22,6 +23,14 @@ const float safeJumpOffset = 50.f;
 
 void Scene_Frogger::init(const std::string& path)
 {
+    // clears previous session
+    enemyCars.clear();
+    logs.clear();
+    riverEnemies.clear();
+    powerUps.clear();
+    drones.clear();
+    trafficSignals.clear();
+
     unsigned int designWidth = 2560;
     unsigned int designHeight = 1600;
     float computedScaleX = static_cast<float>(designWidth) / 480.f;
@@ -72,7 +81,7 @@ void Scene_Frogger::init(const std::string& path)
     float adjustedUpperLane = riverLaneUpper + logEnemyOffset;
 
     // Spawn logs and river enemies.
-    spawnLog(sf::Vector2f(-200.f, adjustedUpperLane + safeJumpOffset), 80.f * scaleFactorX);
+    spawnLog(sf::Vector2f(-200.f, adjustedUpperLane + safeJumpOffset), 80.f * scaleFactorX);    
     spawnRiverEnemy(sf::Vector2f(1000.f, adjustedUpperLane + safeJumpOffset), 80.f * scaleFactorX);
 
 
@@ -84,8 +93,6 @@ void Scene_Frogger::init(const std::string& path)
     spawnPowerUp(powerUpPos, 0.f);
 
     safeRiverSpawnDelay = 5.f + static_cast<float>(std::rand() % 6);
-    m_score = 0;
-    m_lives = 3;
     m_maxHeight = 0;
 }
 
@@ -103,17 +110,12 @@ void Scene_Frogger::safeRiver()
 
 void Scene_Frogger::resetPlayer()
 {
-    const float upwardOffset = 220.f; 
-
-    playerSprite.setPosition(originalStartPosition.x, originalStartPosition.y - upwardOffset);
+    playerSprite.setPosition(startPosition);
 
     isJumping = false;
     verticalVelocity = 0.f;
     onLog = false;
     currentLogIndex = -1;
-
-    std::cout << "New spawn position: (" << startPosition.x
-        << ", " << startPosition.y << ")" << std::endl;
 }
 
 
@@ -229,25 +231,29 @@ void updateDrone(Drone& drone, sf::Time dt, const sf::Vector2u& winSize, const s
     {
     case DroneState::Following:
     {
-        const float verticalOffset = 100.f; 
-        sf::Vector2f adjustedPlayerPos = playerPos - sf::Vector2f(0.f, verticalOffset);
+        const float verticalOffset = 187.f;
+        const float yStopThreshold = 5.f;
 
-        float dx = adjustedPlayerPos.x - dronePos.x;
-        float dy = adjustedPlayerPos.y - dronePos.y;
+        sf::Vector2f hoverPos = playerPos - sf::Vector2f(0.f, verticalOffset);
+
+        float dx = hoverPos.x - dronePos.x;
+        float dy = hoverPos.y - dronePos.y;
         float dist = std::sqrt(dx * dx + dy * dy);
 
-        if (std::abs(dx) <= alignmentThreshold && dronePos.y < adjustedPlayerPos.y) {
+        if (std::abs(dx) <= alignmentThreshold
+            && std::abs(dronePos.y - hoverPos.y) <= yStopThreshold)
+        {
             drone.state = DroneState::Charging;
             drone.stateTimer = 0.f;
         }
-        else {
-            if (dist != 0.f) {
-                sf::Vector2f direction = (adjustedPlayerPos - dronePos) / dist;
-                drone.sprite.move(direction * (drone.speed * 2.f) * dt.asSeconds());
-            }
+        else if (dist > 0.f)
+        {
+            sf::Vector2f direction = (hoverPos - dronePos) / dist;
+            drone.sprite.move(direction * (drone.speed * 2.f) * dt.asSeconds());
         }
         break;
     }
+
 
     case DroneState::Charging:
     {
@@ -291,6 +297,14 @@ void updateDrone(Drone& drone, sf::Time dt, const sf::Vector2u& winSize, const s
     }
 }
 
+float Scene_Frogger::getPerspectiveScale(float y)
+{
+    const float minScale = 0.4f;  // scale near top
+    const float maxScale = 1.0f;  // scale near bottom
+    float t = y / static_cast<float>(_game->window().getSize().y);
+    return minScale + (maxScale - minScale) * t;
+}
+
 
 
 void Scene_Frogger::update(sf::Time dt)
@@ -299,6 +313,39 @@ void Scene_Frogger::update(sf::Time dt)
 
     static float runSoundTimer = 0.f;
     const float runSoundInterval = 0.3f; // Adjust as needed
+
+    static bool bKeyPressedLastFrame = false;
+    if (sf::Keyboard::isKeyPressed(sf::Keyboard::B)) {
+        if (!bKeyPressedLastFrame) {
+            m_showBoundingBoxes = !m_showBoundingBoxes;  // Toggle on press
+        }
+        bKeyPressedLastFrame = true;
+    }
+    else {
+        bKeyPressedLastFrame = false;
+    }
+
+
+    if (_waitingToRespawn)
+    {
+        _respawnDelayTimer += dt.asSeconds();
+
+        if (_respawnDelayTimer >= RESPWAN_DELAY)
+        {
+            init(_levelPath);
+
+            m_playerAnimState = PlayerAnimState::Idle;
+            _waitingToRespawn = false;
+            _respawnDelayTimer = 0.f;
+        }
+        return;
+    }
+
+    if (gameOver)
+    {
+        return;
+    }
+
 
     if (sf::Keyboard::isKeyPressed(sf::Keyboard::Escape))
     {
@@ -796,9 +843,6 @@ void Scene_Frogger::update(sf::Time dt)
         }
     }
 
-
-
-
         
     // --- Update Logs ---
     for (auto& log : logs)
@@ -882,7 +926,6 @@ bool Scene_Frogger::isLaneClearForRiverEnemy(float laneY, float spawnX, float cl
 }
 
 
-
 void Scene_Frogger::sDoAction(const Command& action)
 {
     if (action.type() == "START") {
@@ -898,6 +941,8 @@ void Scene_Frogger::sRender() {
     _game->window().clear();
     // Draw the background.
     _game->window().draw(backgroundSprite);
+
+
     // Draw enemy cars.
     for (const auto& car : enemyCars) {
         _game->window().draw(car.sprite);
@@ -939,6 +984,102 @@ void Scene_Frogger::sRender() {
     }
 
 
+    if (m_showBoundingBoxes)
+    {
+        auto drawBounds = [&](const sf::FloatRect& bounds) {
+            sf::RectangleShape rect;
+            rect.setPosition(bounds.left, bounds.top);
+            rect.setSize({ bounds.width, bounds.height });
+            rect.setFillColor(sf::Color::Transparent);
+            rect.setOutlineColor(sf::Color::Cyan);  // Single color
+            rect.setOutlineThickness(2.f);
+            _game->window().draw(rect);
+            };
+
+        // Player leg box
+        auto full = playerSprite.getGlobalBounds();
+        const float legPortion = 0.25f;
+        sf::FloatRect playerLegBox{
+            full.left,
+            full.top + full.height * (1.f - legPortion),
+            full.width,
+            full.height * legPortion
+        };
+        drawBounds(playerLegBox);
+
+        // Enemy cars
+        for (const auto& car : enemyCars)
+            drawBounds(car.sprite.getGlobalBounds());
+
+        // Logs
+        for (const auto& log : logs)
+            drawBounds(log.sprite.getGlobalBounds());
+
+        // River enemies
+        for (const auto& enemy : riverEnemies)
+            drawBounds(enemy.sprite.getGlobalBounds());
+
+        // Drone laser
+        for (const auto& drone : drones)
+        {
+            if (drone.state == DroneState::Firing)
+            {
+                auto laserBounds = drone.laserHitbox.getGlobalBounds();
+                const float killPortion = 0.10f;
+                sf::FloatRect killBox{
+                    laserBounds.left,
+                    laserBounds.top + laserBounds.height * (1.f - killPortion),
+                    laserBounds.width,
+                    laserBounds.height * killPortion
+                };
+                drawBounds(killBox);
+            }
+        }
+    }
+
+
+
+
+    // Draw Lives Label + Icons
+    static const sf::IntRect LIFE_ICON_RECT(12, 1, 28, 63);
+    const float ICON_SCALE = 1.0f;
+    const float PADDING = 60.f;
+    const float SPACING = 17.f;
+    const unsigned FONT_SIZE = 50;
+
+    // 1) Draw the "Lives:" text
+    sf::Text livesLabel;
+    livesLabel.setFont(Assets::getInstance().getFont("main"));
+    livesLabel.setString("Lives:");
+    livesLabel.setCharacterSize(FONT_SIZE);
+    livesLabel.setFillColor(sf::Color::White);
+    livesLabel.setStyle(sf::Text::Bold);
+    livesLabel.setPosition(PADDING, PADDING);
+    _game->window().draw(livesLabel);
+
+    // 2) Prepare the icon sprite
+    sf::Sprite lifeIcon;
+    lifeIcon.setTexture(Assets::getInstance().getTexture("goSafe"));
+    lifeIcon.setTextureRect(LIFE_ICON_RECT);
+    lifeIcon.setScale(ICON_SCALE, ICON_SCALE);
+
+    // 3) Compute starting X after the label
+    float xStart = livesLabel.getGlobalBounds().left
+        + livesLabel.getGlobalBounds().width
+        + SPACING;
+
+    // 4) Draw one icon per life
+    for (int i = 0; i < m_lives; ++i)
+    {
+        lifeIcon.setPosition(
+            xStart + i * (lifeIcon.getGlobalBounds().width + SPACING),
+            PADDING + (FONT_SIZE - lifeIcon.getGlobalBounds().height) * 0.5f
+        );
+        _game->window().draw(lifeIcon);
+    }
+
+
+
     // Draw Power-Up Status.
     sf::Text powerUpText;
     powerUpText.setFont(Assets::getInstance().getFont("main"));
@@ -958,13 +1099,13 @@ void Scene_Frogger::sRender() {
     {
         sf::Vector2u winSize = _game->window().getSize();
 
-        // --- Draw a semi-transparent overlay
+        // Draw a semi-transparent overlay
         sf::RectangleShape overlay;
         overlay.setSize(sf::Vector2f(winSize));
         overlay.setFillColor(sf::Color(0, 0, 0, 200)); // More opaque than before
         _game->window().draw(overlay);
 
-        // --- Draw the Final Message (Game Over or You Won!)
+        // Draw the Final Message
         sf::Text finalText;
         finalText.setFont(Assets::getInstance().getFont("main"));
         finalText.setStyle(sf::Text::Bold);
@@ -1035,27 +1176,44 @@ void Scene_Frogger::sRender() {
         instructionsText.setPosition(winSize.x / 2.f, winSize.y * 0.7f);
         _game->window().draw(instructionsText);
 
-        return; // End further drawing in end state.
+        return;
     }
 
     //_game->window().display();
 }
 
 
+
+
 void Scene_Frogger::triggerDeath()
 {
-    if (gameFinished)
-        return;
+    if (m_playerAnimState == PlayerAnimState::Dying)
+        return;     // already dying
 
-    m_playerIsHit = true;
+    // lose one life
+    --m_lives;
+
+    // start dying animation
     m_playerAnimState = PlayerAnimState::Dying;
     m_animTimer = 0.f;
-    m_dyingFrameIndex = 0;
     m_dyingTotalTime = 0.f;
+    m_dyingFrameIndex = 0;
 
     isJumping = false;
     verticalVelocity = 0.f;
+
+    // start the respawn countdown (unless it was last life)
+    if (m_lives > 0)
+    {
+        _waitingToRespawn = true;
+        _respawnDelayTimer = 0.f;
+    }
+    else
+    {
+        gameOver = true;
+    }
 }
+
 
 
 void Scene_Frogger::spawnPowerUp(const sf::Vector2f& position, float speed)
@@ -1220,9 +1378,9 @@ void Scene_Frogger::sCollisions(sf::Time dt)
     {
         if (drone.state == DroneState::Firing)
         {
-            // only bottom 10% of the laser hurts
+            // only bottom 2% of the laser hurts
             auto fl = drone.laserHitbox.getGlobalBounds();
-            const float killPortion = 0.10f;
+            const float killPortion = 0.02f;
             sf::FloatRect killBox{
                 fl.left,
                 fl.top + fl.height * (1.f - killPortion),
@@ -1237,8 +1395,10 @@ void Scene_Frogger::sCollisions(sf::Time dt)
             }
         }
     }
-    if (collision)
+    if (collision && !m_playerIsHit)
+    {
         triggerDeath();
+    }
 }
 
 
@@ -1250,12 +1410,19 @@ void Scene_Frogger::sCollisions(sf::Time dt)
 
 void Scene_Frogger::killPlayer()
 {
-    if (gameFinished)
-        return;
-
-    std::cout << "Player is dead. Game Over." << std::endl;
-    gameOver = true;
+    if (m_lives > 0)
+    {
+        resetPlayer();
+        m_playerIsHit = false;             // allow next death to register
+        m_playerAnimState = PlayerAnimState::Idle;
+    }
+    else
+    {
+        std::cout << "No lives left. Game Over.\n";
+        gameOver = true;
+    }
 }
+
 
 
 void Scene_Frogger::sAnimation(sf::Time dt)
@@ -1310,18 +1477,32 @@ void Scene_Frogger::sAnimation(sf::Time dt)
     case PlayerAnimState::Dying:
         m_animTimer += dt.asSeconds();
         m_dyingTotalTime += dt.asSeconds();
+
         if (m_animTimer >= dyingFrameDuration)
         {
             m_animTimer = 0.f;
             m_dyingFrameIndex = (m_dyingFrameIndex + 1) % 2;
         }
-        playerSprite.setTexture(Assets::getInstance().getTexture("goSafe"));
+
         playerSprite.setTextureRect(dyingFrames[m_dyingFrameIndex]);
+
         if (m_dyingTotalTime >= totalDyingDuration)
         {
-            killPlayer();
-            return;
+            if (!gameOver)
+            {
+                // respawn in‐place, with remaining lives intact
+                resetPlayer();
+                m_playerAnimState = PlayerAnimState::Idle;
+            }
+            else
+            {
+                // last life gone – we stay in Dying state
+                // let your update() logic pick up gameOver==true and show the
+                // Game Over screen/options.
+            }
         }
         break;
+
+
     }
 }

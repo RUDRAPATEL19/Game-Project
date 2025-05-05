@@ -49,6 +49,7 @@ struct Drone {
     DroneState state = DroneState::Following;
     float stateTimer = 0.f;
     sf::RectangleShape laserHitbox;
+    sf::Sprite shadowSprite;
 };
 
 
@@ -97,7 +98,7 @@ private:
     int m_lives{ 3 };
     bool    m_playerIsHit = false;
 
-    float getPerspectiveScale(float y);
+    
     //void drawDebugLanes();
     bool m_showBoundingBoxes = false;
 
@@ -191,6 +192,10 @@ public:
     static const sf::Vector2f SAFE_RIVER_SCALE;
     static const sf::Vector2f RIVER_ENEMY_SCALE;
 
+    float getPerspectiveScale(float y);
+    float getPerspectiveScalePlayer(float y);
+    float getPerspectiveScaleDrone(float y);
+
     unsigned int designWidth = 2560;
     unsigned int designHeight = 1600;
     float scaleFactorX = 2560.f / 480.f; // approx 5.33
@@ -200,6 +205,7 @@ public:
     int currentLevel;
 
     bool jumpSoundPlayed = false;
+    bool m_paused = false;
 
     void resetPlayer();
     sf::Vector2f originalStartPosition;

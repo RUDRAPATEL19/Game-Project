@@ -15,8 +15,13 @@ Texture Title           ../assets/Textures/FroggerAtlas.png
 Texture Entities        ../assets/Textures/FroggerAtlas.png
 Texture goSafe			../assets/Textures/goSafe.png
 Texture leaf			../assets/Textures/leaf.png
-
-
+Texture redcar			../assets/Textures/redcar.png
+Texture bluecar			../assets/Textures/bluecar.png
+Texture yellowcar		../assets/Textures/yellowcar.png
+Texture greencar		../assets/Textures/greencar.png
+Texture boats			../assets/Textures/boats.png
+Texture shadow			../assets/Textures/shadow.png
+Texture powerup			../assets/Textures/powerup.png
 
 # Sprites
 Sprite Background       Background   0 0  480 600

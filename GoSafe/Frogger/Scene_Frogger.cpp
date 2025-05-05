@@ -64,19 +64,19 @@ void Scene_Frogger::init(const std::string& path)
     }
 
     // Spawn enemy cars.
-    float laneTop1 = designHeight * 0.08f;
-    float laneTop2 = designHeight * 0.22f;
+    float laneTop1 = designHeight * 0.06f;
+    float laneTop2 = designHeight * 0.16f;
     spawnEnemyCar(sf::Vector2f(-100.f, laneTop1), 100.f * scaleFactorX);
     spawnEnemyCar(sf::Vector2f(designWidth + 100.f, laneTop2), -120.f * scaleFactorX);
 
-    float laneBottom1 = designHeight * 0.73f;
-    float laneBottom2 = designHeight * 0.88f;
+    float laneBottom1 = designHeight * 0.63f;
+    float laneBottom2 = designHeight * 0.84f;
     spawnEnemyCar(sf::Vector2f(-100.f, laneBottom1), 110.f * scaleFactorX);
     spawnEnemyCar(sf::Vector2f(designWidth + 100.f, laneBottom2), -130.f * scaleFactorX);
 
     // Define river lane positions.
-    float riverLaneUpper = designHeight * 0.38f;
-    float riverLaneLower = designHeight * 0.55f;
+    float riverLaneUpper = designHeight * 0.27f;
+    float riverLaneLower = designHeight * 0.43f;
     float logEnemyOffset = 20.f;
     float adjustedUpperLane = riverLaneUpper + logEnemyOffset;
 
@@ -89,7 +89,7 @@ void Scene_Frogger::init(const std::string& path)
     spawnRiverEnemy(sf::Vector2f(-150.f, riverLaneLower), -90.f * scaleFactorX);
 
     // Spawn safe river power-up.
-    sf::Vector2f powerUpPos(designWidth / 2.f, designHeight * 0.85f);
+    sf::Vector2f powerUpPos(designWidth / 2.f, designHeight * 0.80f);
     spawnPowerUp(powerUpPos, 0.f);
 
     safeRiverSpawnDelay = 5.f + static_cast<float>(std::rand() % 6);
@@ -174,7 +174,7 @@ void Scene_Frogger::initTrafficSignals() {
     signal1.sprite.setOrigin(bounds.width / 2.f, bounds.height / 2.f);
     const sf::Vector2u winSize = _game->window().getSize();
     float posX1 = 50.f;
-    float posY1 = winSize.y * 0.805f;
+    float posY1 = winSize.y * 0.725f;
     signal1.sprite.setPosition(posX1, posY1);
     signal1.sprite.setScale(1.5f, 1.5f);
     signal1.state = SignalState::Green;
@@ -190,7 +190,7 @@ void Scene_Frogger::initTrafficSignals() {
     bounds = signal2.sprite.getLocalBounds();
     signal2.sprite.setOrigin(bounds.width / 2.f, bounds.height / 2.f);
     float posX2 = 50.f;      
-    float posY2 = winSize.y * 0.15f;
+    float posY2 = winSize.y * 0.11f;
     signal2.sprite.setPosition(posX2, posY2);
     signal2.sprite.setScale(1.5f, 1.5f);
     signal2.state = SignalState::Green;
@@ -218,6 +218,7 @@ void updateDrone(Drone& drone, sf::Time dt, const sf::Vector2u& winSize, const s
     sf::Vector2f dronePos = drone.sprite.getPosition();
     sf::Vector2f playerPos = playerSprite.getPosition();
 
+
     float dx = playerPos.x - dronePos.x;
     float dy = playerPos.y - dronePos.y;
     float dist = std::sqrt(dx * dx + dy * dy);
@@ -233,6 +234,18 @@ void updateDrone(Drone& drone, sf::Time dt, const sf::Vector2u& winSize, const s
     {
         const float verticalOffset = 187.f;
         const float yStopThreshold = 5.f;
+
+        // Shadow always placed at expected laser hit position
+        float shadowOffsetY = 42.f + 200.f;  // same as laser offset + laser height
+        sf::Vector2f shadowPos = drone.sprite.getPosition();
+        shadowPos.y += 42.f + 200.f;  // same offset as before
+
+        drone.shadowSprite.setPosition(shadowPos);
+
+        // Scale the shadow based on Y-position perspective
+        float shadowScale = scene->getPerspectiveScale(shadowPos.y);
+        drone.shadowSprite.setScale(shadowScale, shadowScale);
+
 
         sf::Vector2f hoverPos = playerPos - sf::Vector2f(0.f, verticalOffset);
 
@@ -257,6 +270,20 @@ void updateDrone(Drone& drone, sf::Time dt, const sf::Vector2u& winSize, const s
 
     case DroneState::Charging:
     {
+
+        // Shadow always placed at expected laser hit position
+        float shadowOffsetY = 42.f + 200.f;  // same as laser offset + laser height
+        sf::Vector2f shadowPos = drone.sprite.getPosition();
+        shadowPos.y += 42.f + 200.f;  // same offset as before
+
+        drone.shadowSprite.setPosition(shadowPos);
+
+        // Scale the shadow based on Y-position perspective
+        float shadowScale = scene->getPerspectiveScale(shadowPos.y);
+        drone.shadowSprite.setScale(shadowScale, shadowScale);
+
+
+
         drone.stateTimer += dt.asSeconds();
         if (drone.stateTimer >= chargeDuration) {
             drone.state = DroneState::Firing;
@@ -271,6 +298,18 @@ void updateDrone(Drone& drone, sf::Time dt, const sf::Vector2u& winSize, const s
     }
     case DroneState::Firing:
     {
+        // Shadow always placed at expected laser hit position
+        float shadowOffsetY = 42.f + 200.f;  // same as laser offset + laser height
+        sf::Vector2f shadowPos = drone.sprite.getPosition();
+        shadowPos.y += 42.f + 200.f;  // same offset as before
+
+        drone.shadowSprite.setPosition(shadowPos);
+
+        // Scale the shadow based on Y-position perspective
+        float shadowScale = scene->getPerspectiveScale(shadowPos.y);
+        drone.shadowSprite.setScale(shadowScale, shadowScale);
+
+
         drone.stateTimer += dt.asSeconds();
         float laserOffsetY = 42.f;
         drone.laserHitbox.setPosition(drone.sprite.getPosition().x,
@@ -287,6 +326,17 @@ void updateDrone(Drone& drone, sf::Time dt, const sf::Vector2u& winSize, const s
 
     case DroneState::Cooldown:
     {
+        float shadowOffsetY = 42.f + 200.f;  // same as laser offset + laser height
+        sf::Vector2f shadowPos = drone.sprite.getPosition();
+        shadowPos.y += 42.f + 200.f;  // same offset as before
+
+        drone.shadowSprite.setPosition(shadowPos);
+
+        // Scale the shadow based on Y-position perspective
+        float shadowScale = scene->getPerspectiveScale(shadowPos.y);
+        drone.shadowSprite.setScale(shadowScale, shadowScale);
+
+
         drone.stateTimer += dt.asSeconds();
         if (drone.stateTimer >= cooldownDuration) {
             drone.state = DroneState::Following;
@@ -305,10 +355,40 @@ float Scene_Frogger::getPerspectiveScale(float y)
     return minScale + (maxScale - minScale) * t;
 }
 
+float Scene_Frogger::getPerspectiveScalePlayer(float y)
+{
+    const float minScale = 0.9f;  // scale near top
+    const float maxScale = 1.8f;  // scale near bottom
+    float t = y / static_cast<float>(_game->window().getSize().y);
+    return minScale + (maxScale - minScale) * t;
+}
+
+float Scene_Frogger::getPerspectiveScaleDrone(float y)
+{
+    const float minScale = 1.2f;  // scale near top
+    const float maxScale = 4.2f;  // scale near bottom
+    float t = y / static_cast<float>(_game->window().getSize().y);
+    return minScale + (maxScale - minScale) * t;
+}
+
+
+
 
 
 void Scene_Frogger::update(sf::Time dt)
 {
+    // Toggle pause
+    static bool pPreviouslyPressed = false;
+    bool pCurrentlyPressed = sf::Keyboard::isKeyPressed(sf::Keyboard::P);
+
+    if (pCurrentlyPressed && !pPreviouslyPressed) {
+        m_paused = !m_paused;
+        std::cout << (m_paused ? "Game Paused\n" : "Game Resumed\n");
+    }
+    pPreviouslyPressed = pCurrentlyPressed;
+
+    if (m_paused) return;
+
     const sf::Vector2u winSize = _game->window().getSize();
 
     static float runSoundTimer = 0.f;
@@ -381,6 +461,15 @@ void Scene_Frogger::update(sf::Time dt)
         std::cout << "Game Finished: You Won!" << std::endl;
     }
 
+    // --- Apply Perspective Scaling to Player ---
+    float scale = getPerspectiveScalePlayer(playerSprite.getPosition().y);
+    playerSprite.setScale(scale, scale);
+
+    // Optional: Re-center origin if your sprite rect changes dynamically
+    sf::FloatRect bounds = playerSprite.getLocalBounds();
+    playerSprite.setOrigin(bounds.width / 2.f, bounds.height / 2.f);
+
+
     if (gameOver || gameFinished)
     {
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Escape))
@@ -440,7 +529,6 @@ void Scene_Frogger::update(sf::Time dt)
                 float spawnX = (winSize.x * 0.1f) +
                     static_cast<float>(std::rand()) / (static_cast<float>(RAND_MAX / (winSize.x * 0.8f)));
                 sf::Vector2f powerUpPos(spawnX, spawnY);
-                spawnSafeRiver(powerUpPos, 0.f);
                 safeRiverSpawnTimer = 0.f;
                 safeRiverSpawnDelay = 5.f + static_cast<float>(std::rand() % 6);
             }
@@ -659,8 +747,8 @@ void Scene_Frogger::update(sf::Time dt)
     // --- River Collision Check --- 
     if (!isJumping && !gameFinished && m_playerAnimState != PlayerAnimState::Dying)
     {
-        float riverTop = winSize.y * 0.32f;
-        float riverBottom = winSize.y * 0.62f;
+        float riverTop = winSize.y * 0.22f;
+        float riverBottom = winSize.y * 0.49f;
         float playerCenterY = playerSprite.getGlobalBounds().top + playerSprite.getGlobalBounds().height / 2.f;
 
         if (playerCenterY >= riverTop && playerCenterY <= riverBottom && !onLog)
@@ -687,11 +775,11 @@ void Scene_Frogger::update(sf::Time dt)
     const float designWidth = 2560.f;
     const float designHeight = 1600.f;
 
-    // Lane positions from your init code:
-    float laneTop1 = designHeight * 0.08f;
-    float laneTop2 = designHeight * 0.22f;
-    float laneBottom1 = designHeight * 0.73f;
-    float laneBottom2 = designHeight * 0.88f;
+    // Lane positions from init code:
+    float laneTop1 = designHeight * 0.06f;
+    float laneTop2 = designHeight * 0.16f;
+    float laneBottom1 = designHeight * 0.63f;
+    float laneBottom2 = designHeight * 0.84f;
     float riverLaneUpper = designHeight * 0.38f;
     float riverLaneLower = designHeight * 0.55f;
     float logEnemyOffset = 20.f; // Vertical offset for logs in upper lane
@@ -878,7 +966,13 @@ void Scene_Frogger::update(sf::Time dt)
     for (auto& drone : drones)
     {
         updateDrone(drone, dt, winSize, playerSprite, this);
+
+        // Apply perspective scaling
+        //float scale = getPerspectiveScalePlayer(drone.sprite.getPosition().y);
+        //drone.sprite.setScale(scale, scale);
     }
+
+
 
 
     sCollisions(dt);
@@ -976,6 +1070,7 @@ void Scene_Frogger::sRender() {
 	// Draw drones.
     for (const auto& drone : drones)
     {
+        _game->window().draw(drone.shadowSprite);
         _game->window().draw(drone.sprite);
         if (drone.state == DroneState::Firing)
         {
@@ -983,13 +1078,39 @@ void Scene_Frogger::sRender() {
         }
     }
 
+    if (m_paused)
+    {
+        // Draw semi-transparent overlay
+        sf::RectangleShape overlay;
+        overlay.setSize(sf::Vector2f(_game->window().getSize()));
+        overlay.setFillColor(sf::Color(0, 0, 0, 150));  // Slightly transparent black
+        _game->window().draw(overlay);
+
+        // Draw "Paused" text
+        sf::Text pauseText;
+        pauseText.setFont(Assets::getInstance().getFont("main"));
+        pauseText.setString("Resume (P)");
+        pauseText.setCharacterSize(100);
+        pauseText.setFillColor(sf::Color::Green);
+        pauseText.setStyle(sf::Text::Bold);
+        pauseText.setOutlineThickness(3.f);
+        pauseText.setOutlineColor(sf::Color::Black);
+
+        sf::FloatRect bounds = pauseText.getLocalBounds();
+        pauseText.setOrigin(bounds.left + bounds.width / 2.f, bounds.top + bounds.height / 2.f);
+        pauseText.setPosition(_game->window().getSize().x / 2.f, _game->window().getSize().y / 2.f);
+
+        _game->window().draw(pauseText);
+    }
+
+
 
     if (m_showBoundingBoxes)
     {
         auto drawBounds = [&](const sf::FloatRect& bounds) {
             sf::RectangleShape rect;
             rect.setPosition(bounds.left, bounds.top);
-            rect.setSize({ bounds.width, bounds.height });
+            rect.setSize({ bounds.width, bounds.height });   
             rect.setFillColor(sf::Color::Transparent);
             rect.setOutlineColor(sf::Color::Cyan);  // Single color
             rect.setOutlineThickness(2.f);
@@ -1165,11 +1286,6 @@ void Scene_Frogger::sRender() {
         instructionsText.setOutlineColor(sf::Color::Black);
         instructionsText.setCharacterSize(48);
 
-        if (gameOver)
-            instructionsText.setString("W/S: Navigate    Enter: Try Again    Esc: Quit");
-        else
-            instructionsText.setString("W/S: Navigate    Enter: Play Again    Esc: Return to Menu");
-
         sf::FloatRect instrBounds = instructionsText.getLocalBounds();
         instructionsText.setOrigin(instrBounds.left + instrBounds.width / 2.f,
             instrBounds.top + instrBounds.height / 2.f);
@@ -1219,77 +1335,93 @@ void Scene_Frogger::triggerDeath()
 void Scene_Frogger::spawnPowerUp(const sf::Vector2f& position, float speed)
 {
     PowerUp pu;
-    pu.sprite.setTexture(Assets::getInstance().getTexture("Entities"));
-    pu.sprite.setTextureRect(sf::IntRect(18, 193, 35, 35));
+    pu.sprite.setTexture(Assets::getInstance().getTexture("powerup"));      // Use new sprite
+    pu.sprite.setScale(1.0f, 1.0f);                                         // Tweak for visual size
     pu.sprite.setPosition(position);
-    pu.speed = speed;
-    pu.active = true;
-    powerUps.push_back(pu);
-}
 
-void Scene_Frogger::spawnSafeRiver(const sf::Vector2f& position, float speed)
-{
-    PowerUp pu;
-    pu.sprite.setTexture(Assets::getInstance().getTexture("Entities"));
-    pu.sprite.setTextureRect(sf::IntRect(19, 193, 35, 35));  
-    pu.sprite.setPosition(position);
     pu.speed = speed;
     pu.active = true;
 
-    pu.sprite.setScale(SAFE_RIVER_SCALE);
-
-    std::cout << "Safe river power-up new scale: "
-        << pu.sprite.getScale().x << ", "
-        << pu.sprite.getScale().y << std::endl;
-
     powerUps.push_back(pu);
 }
+
+
+
 
 
 
 void Scene_Frogger::spawnEnemyCar(const sf::Vector2f& position, float speed)
 {
     EnemyCar car;
-    car.sprite.setTexture(Assets::getInstance().getTexture("Entities"));
-    
-    sf::IntRect carRects[5] = {
-        sf::IntRect(130, 96, 36, 21),
-        sf::IntRect(171, 96, 37, 22),
-        sf::IntRect(214, 96, 47, 25),
-    };
-    int carType = std::rand() % 3;
-    car.sprite.setTextureRect(carRects[carType]);
-    
-    // Apply scaling to match the design resolution.
-    car.sprite.setScale(scaleFactorX, scaleFactorY);
-    
 
-    // Center the sprite.
+    // Define textures and whether each one faces right by default
+    struct CarType {
+        std::string textureName;
+        bool facesRight;
+    };
+
+    const CarType carTypes[4] = {
+        { "redcar",   false },   // redcar faces left by default
+        { "bluecar",  false },   // bluecar faces left by default
+        { "yellowcar", true },   // yellowcar faces right by default
+        { "greencar",  true }    // greencar faces right by default
+    };
+
+    int carIndex = std::rand() % 4;
+    const CarType& selectedCar = carTypes[carIndex];
+
+    car.sprite.setTexture(Assets::getInstance().getTexture(selectedCar.textureName));
+
+    // Set scale with perspective
+    float scale = getPerspectiveScale(position.y);
+
+    // Determine direction: Flip horizontally if speed and default facing don't align
+    float scaleX = scale;
+    if ((speed > 0 && !selectedCar.facesRight) || (speed < 0 && selectedCar.facesRight)) {
+        scaleX = -scale;  // Flip horizontally
+    }
+
+    car.sprite.setScale(scaleX, scale); // Set both X and Y scale
+
+    // Center the origin
     sf::FloatRect bounds = car.sprite.getLocalBounds();
     car.sprite.setOrigin(bounds.width / 2.f, bounds.height / 2.f);
-    
+
     car.sprite.setPosition(position);
-    car.speed = speed;  
+    car.speed = speed;
+
     enemyCars.push_back(car);
 }
 
 
+
+
 void Scene_Frogger::spawnLog(const sf::Vector2f& position, float speed)
 {
-    sf::IntRect logRect(9, 94, 68, 29);
+    // Example: three boats, each 64x32 in the texture
+    sf::IntRect boatRects[3] = {
+        sf::IntRect(0, 102, 100, 76),
+        sf::IntRect(0, 0, 100, 77),
+        sf::IntRect(0, 203, 100, 77)
+    };
+
     Log log;
-    log.sprite.setTexture(Assets::getInstance().getTexture("Entities"));
-    log.sprite.setTextureRect(logRect);
+    log.sprite.setTexture(Assets::getInstance().getTexture("boats"));
 
+    // Pick a random boat frame
+    int boatType = std::rand() % 3;
+    log.sprite.setTextureRect(boatRects[boatType]);
+
+    // Set position, scale, etc.
+    log.sprite.setPosition(position);
     log.sprite.setScale(scaleFactorX, scaleFactorY);
+    log.speed = speed;
 
-    // Center the log's origin.
     sf::FloatRect bounds = log.sprite.getLocalBounds();
     log.sprite.setOrigin(bounds.width / 2.f, bounds.height / 2.f);
 
-    log.sprite.setPosition(position);
-    log.speed = speed; 
     logs.push_back(log);
+
 }
 
 const sf::Vector2f Scene_Frogger::SAFE_RIVER_SCALE(1.5f, 1.5f);
@@ -1318,6 +1450,13 @@ void Scene_Frogger::spawnRiverEnemy(const sf::Vector2f& position, float speed)
 
 void Scene_Frogger::spawnDrone(const sf::Vector2f& position, float speed) {
     Drone drone;
+    // Initialize shadow rectangle
+    drone.shadowSprite.setTexture(Assets::getInstance().getTexture("shadow"));
+    drone.shadowSprite.setOrigin(
+        drone.shadowSprite.getLocalBounds().width / 2.f,
+        drone.shadowSprite.getLocalBounds().height / 2.f
+    );
+
     drone.sprite.setTexture(Assets::getInstance().getTexture("goSafe"));
     drone.sprite.setTextureRect(sf::IntRect(19, 81, 57, 68));
     sf::FloatRect bounds = drone.sprite.getLocalBounds();

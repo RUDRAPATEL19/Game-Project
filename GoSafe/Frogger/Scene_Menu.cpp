@@ -29,8 +29,12 @@ void Scene_Menu::init()
     _title = "Go Safe!";
 
     _menuStrings.clear();
+    _levelPaths.clear();
 
-    if (_game->hasScene("PLAY"))  // ← check if game is paused in background
+    _title = "Go Safe!";
+
+    // Show resume only if there is a paused scene
+    if (!_game->_pausedSceneName.empty())
     {
         _menuStrings.push_back("Resume");
     }
@@ -39,9 +43,10 @@ void Scene_Menu::init()
     _menuStrings.push_back("Hard");
     _menuStrings.push_back("How To Play");
 
-    _levelPaths.clear();
     _levelPaths.push_back("../assets/level1.txt");
     _levelPaths.push_back("../assets/level2.txt");
+
+    _menuIndex = 0;
 
     sf::Vector2u winSize = _game->window().getSize();
     titleFontSize = 80;
@@ -92,22 +97,30 @@ void Scene_Menu::initLeaves()
 void Scene_Menu::buildMenu()
 {
     _menuStrings.clear();
+    _levelPaths.clear();
 
-    if (_game->hasScene("PLAY"))
+    if (fromPausedGame)
     {
         _menuStrings.push_back("Resume");
+        _menuStrings.push_back("How To Play");
     }
+    else
+    {
+        if (_game->hasScene("PLAY"))
+        {
+            _menuStrings.push_back("Resume");
+        }
+        _menuStrings.push_back("Easy");
+        _menuStrings.push_back("Hard");
+        _menuStrings.push_back("How To Play");
 
-    _menuStrings.push_back("Easy");
-    _menuStrings.push_back("Hard");
-    _menuStrings.push_back("How To Play");
-
-    _levelPaths.clear();
-    _levelPaths.push_back("../assets/level1.txt");
-    _levelPaths.push_back("../assets/level2.txt");
+        _levelPaths.push_back("../assets/level1.txt");
+        _levelPaths.push_back("../assets/level2.txt");
+    }
 
     _menuIndex = 0;
 }
+
 
 
 void Scene_Menu::updateLeaves(sf::Time dt)
@@ -221,33 +234,29 @@ void Scene_Menu::sDoAction(const Command& action)
 {
     if (action.type() == "SELECT")
     {
-        int optionOffset = _game->hasScene("PLAY") ? 1 : 0;
+        int offset = (!_game->_pausedSceneName.empty()) ? 1 : 0;
 
-        // Resume
-        if (_game->hasScene("PLAY") && _menuIndex == 0)
+        if (_menuStrings[0] == "Resume" && _menuIndex == 0)
         {
-            std::cout << "Resuming previous game...\n";
-            _game->changeScene("PLAY", nullptr, false);
+            _game->changeScene(_game->_pausedSceneName, nullptr, false);
+            _game->_pausedSceneName = "";
+            return;
         }
 
-        // Level 1
-        if (_menuIndex == 0 + optionOffset)
+        if (!fromPausedGame)
         {
-            std::cout << "Level 1 selected!" << std::endl;
-            _game->changeScene("PLAY", std::make_shared<Scene_Frogger>(_game, _levelPaths[0]), true);
+            if (_menuIndex == 0 + offset)
+                _game->changeScene("PLAY", std::make_shared<Scene_Frogger>(_game, _levelPaths[0]), true);
+            else if (_menuIndex == 1 + offset)
+                _game->changeScene("PLAY", std::make_shared<Scene_Frogger>(_game, _levelPaths[1]), true);
         }
-        // Level 2
-        else if (_menuIndex == 1 + optionOffset)
+
+        if ((_menuStrings.size() >= 2 && _menuStrings[_menuIndex] == "How To Play"))
         {
-            std::cout << "Level 2 selected!" << std::endl;
-            _game->changeScene("PLAY", std::make_shared<Scene_Frogger>(_game, _levelPaths[1]), true);
-        }
-        // How To Play
-        else if (_menuIndex == 2 + optionOffset)
-        {
-            std::cout << "How To Play selected!" << std::endl;
             _game->changeScene("PLAY", std::make_shared<HowToPlayScene>(_game), true);
         }
+
     }
 }
+
 

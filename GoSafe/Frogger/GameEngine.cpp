@@ -133,29 +133,32 @@ void GameEngine::changeScene(const std::string& sceneName,
     std::shared_ptr<Scene> scene,
     bool endCurrentScene)
 {
+    if (_currentScene != "MENU" && sceneName == "MENU")
+    {
+        _pausedSceneName = _currentScene;
+    }
+
     if (endCurrentScene)
     {
         _sceneMap.clear();
-        _pausedSceneName = "";
     }
 
-    if (!_sceneMap.contains(sceneName))
+    if (scene != nullptr)
     {
         _sceneMap[sceneName] = scene;
     }
 
-    // If switching from an active scene to menu, store current
-    if (_currentScene != "MENU" && sceneName == "MENU")
-    {
-        _pausedSceneName = _currentScene;  // Save current scene as paused
-    }
-
     _currentScene = sceneName;
 
-    _window.clear();
-    _sceneMap[_currentScene]->sRender();
-    _window.display();
+    if (_sceneMap.contains(_currentScene) && _sceneMap[_currentScene] != nullptr)
+    {
+        _window.clear();
+        _sceneMap[_currentScene]->sRender();
+        _window.display();
+    }
 }
+
+
 
 
 

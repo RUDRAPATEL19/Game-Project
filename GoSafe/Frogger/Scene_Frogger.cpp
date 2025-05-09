@@ -70,9 +70,7 @@ void Scene_Frogger::init(const std::string& path)
     float finishX = designWidth / 2.f;
     finishLineSprite.setPosition(finishX, finishY);
 
-    // Optional: Scale it with perspective or fixed size
-    finishLineSprite.setScale(1.0f, 1.0f);  // Adjust if needed
-
+    finishLineSprite.setScale(1.0f, 1.0f);
 
     // Spawn enemy cars.
     float laneTop1 = designHeight * 0.06f;
@@ -387,7 +385,7 @@ void Scene_Frogger::update(sf::Time dt)
     const sf::Vector2u winSize = _game->window().getSize();
 
     static float runSoundTimer = 0.f;
-    const float runSoundInterval = 0.3f; // Adjust as needed
+    const float runSoundInterval = 0.3f;
 
     static bool bKeyPressedLastFrame = false;
     if (sf::Keyboard::isKeyPressed(sf::Keyboard::B)) {
@@ -405,7 +403,6 @@ void Scene_Frogger::update(sf::Time dt)
     {
         _respawnDelayTimer += dt.asSeconds();
 
-        // Skip only player controls + animation; but let world keep updating
         if (_respawnDelayTimer >= RESPWAN_DELAY)
         {
             init(_levelPath);
@@ -470,7 +467,6 @@ void Scene_Frogger::update(sf::Time dt)
 
 
         // --- Log Riding ---
-        // --- First check if player is on a log ---
         bool foundLog = false;
         for (int i = 0; i < logs.size(); ++i) {
             sf::FloatRect logBounds = logs[i].sprite.getGlobalBounds();
@@ -559,17 +555,12 @@ void Scene_Frogger::update(sf::Time dt)
 
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Escape))
         {
-            // Pause the game by keeping PLAY scene and showing MENU
-            if (!_game->hasScene("MENU"))
-            {
-                _game->changeScene("MENU", std::make_shared<Scene_Menu>(_game), false);
-            }
-            else
-            {
-                _game->changeScene("MENU", nullptr, false);
-            }
+            auto menu = std::make_shared<Scene_Menu>(_game);
+            menu->fromPausedGame = true;
+            _game->changeScene("MENU", menu, false); // false means don't end current scene
             return;
         }
+
 
 
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::W) ||
@@ -596,14 +587,8 @@ void Scene_Frogger::update(sf::Time dt)
         float scale = getPerspectiveScalePlayer(playerSprite.getPosition().y);
         playerSprite.setScale(scale, scale);
 
-        // Optional: Re-center origin if your sprite rect changes dynamically
         sf::FloatRect bounds = playerSprite.getLocalBounds();
         playerSprite.setOrigin(bounds.width / 2.f, bounds.height / 2.f);
-
-
-        // Handle player controls only if not waiting
-        // include movement, jumping, powerups, etc.
-        // (all your existing player control code here...)
 
 
     }
@@ -631,17 +616,12 @@ void Scene_Frogger::update(sf::Time dt)
     {
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Escape))
         {
-            // Pause the game by keeping PLAY scene and showing MENU
-            if (!_game->hasScene("MENU"))
-            {
-                _game->changeScene("MENU", std::make_shared<Scene_Menu>(_game), false);
-            }
-            else
-            {
-                _game->changeScene("MENU", nullptr, false);
-            }
+            auto menu = std::make_shared<Scene_Menu>(_game);
+            menu->fromPausedGame = true;
+            _game->changeScene("MENU", menu, false);
             return;
         }
+
 
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::W) || sf::Keyboard::isKeyPressed(sf::Keyboard::Up))
         {

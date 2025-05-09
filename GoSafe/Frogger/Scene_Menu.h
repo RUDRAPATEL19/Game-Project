@@ -33,6 +33,7 @@ private:
 public:
     Scene_Menu(GameEngine* gameEngine);
     void onBegin(); 
+    bool fromPausedGame = false;
     virtual void update(sf::Time dt) override;
     virtual void sRender() override;
     virtual void sDoAction(const Command& action) override;

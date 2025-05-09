@@ -17,11 +17,27 @@ GameEngine::GameEngine(const std::string& path)
 	init(path);
 }
 
+bool GameEngine::hasScene(const std::string& name) const
+{
+    return m_sceneMap.find(name) != m_sceneMap.end();
+}
+
+
+void GameEngine::resumeScene()
+{
+    if (!_pausedSceneName.empty() && _sceneMap.contains(_pausedSceneName))
+    {
+        _currentScene = _pausedSceneName;
+        _pausedSceneName = "";
+    }
+}
+
+
 
 void GameEngine::init(const std::string& path)
 {
     sf::VideoMode desktop = sf::VideoMode::getDesktopMode();
-    _window.create(desktop, "Go Safe", sf::Style::Default);
+    _window.create(desktop, "Go Safe", sf::Style::Fullscreen);
 
     MusicPlayer::getInstance().addSong("hop", "../assets/Sound/jump.mp3");
     MusicPlayer::getInstance().addSong("run", "../assets/Sound/run.mp3");
@@ -113,16 +129,25 @@ std::shared_ptr<Scene> GameEngine::currentScene()
 	return _sceneMap.at(_currentScene);
 }
 
-void GameEngine::changeScene(const std::string& sceneName, std::shared_ptr<Scene> scene, bool endCurrentScene)
+void GameEngine::changeScene(const std::string& sceneName,
+    std::shared_ptr<Scene> scene,
+    bool endCurrentScene)
 {
     if (endCurrentScene)
     {
         _sceneMap.clear();
+        _pausedSceneName = "";
     }
 
     if (!_sceneMap.contains(sceneName))
     {
         _sceneMap[sceneName] = scene;
+    }
+
+    // If switching from an active scene to menu, store current
+    if (_currentScene != "MENU" && sceneName == "MENU")
+    {
+        _pausedSceneName = _currentScene;  // Save current scene as paused
     }
 
     _currentScene = sceneName;
@@ -131,6 +156,7 @@ void GameEngine::changeScene(const std::string& sceneName, std::shared_ptr<Scene
     _sceneMap[_currentScene]->sRender();
     _window.display();
 }
+
 
 
 void GameEngine::quit()

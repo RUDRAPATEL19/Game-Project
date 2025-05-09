@@ -22,6 +22,10 @@ Texture greencar		../assets/Textures/greencar.png
 Texture boats			../assets/Textures/boats.png
 Texture shadow			../assets/Textures/shadow.png
 Texture powerup			../assets/Textures/powerup.png
+Texture lifebg			../assets/Textures/lifebg.png
+Texture shark			../assets/Textures/shark.png
+Texture raft			../assets/Textures/raft.png
+Texture finish     ../assets/Textures/finish.png
 
 # Sprites
 Sprite Background       Background   0 0  480 600

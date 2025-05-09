@@ -13,7 +13,8 @@ private:
     std::vector<std::string> _menuStrings; 
     std::vector<std::string> _levelPaths;     
     int _menuIndex;
-
+    bool m_firstFrame = true;
+    void buildMenu();
     unsigned int titleFontSize;
     unsigned int optionFontSize;
     unsigned int infoFontSize;
@@ -31,6 +32,7 @@ private:
 
 public:
     Scene_Menu(GameEngine* gameEngine);
+    void onBegin(); 
     virtual void update(sf::Time dt) override;
     virtual void sRender() override;
     virtual void sDoAction(const Command& action) override;

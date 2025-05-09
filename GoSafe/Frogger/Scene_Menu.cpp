@@ -1,4 +1,4 @@
-#include "Scene_Menu.h"
+﻿#include "Scene_Menu.h"
 #include "Scene_Frogger.h"
 #include "HowToPlayScene.h"
 #include "Assets.h"
@@ -29,6 +29,12 @@ void Scene_Menu::init()
     _title = "Go Safe!";
 
     _menuStrings.clear();
+
+    if (_game->hasScene("PLAY"))  // ← check if game is paused in background
+    {
+        _menuStrings.push_back("Resume");
+    }
+
     _menuStrings.push_back("Easy");
     _menuStrings.push_back("Hard");
     _menuStrings.push_back("How To Play");
@@ -49,7 +55,10 @@ void Scene_Menu::onEnd()
 {
     _menuStrings.clear();
     _levelPaths.clear();
+    m_firstFrame = true;
+
 }
+
 
 // --- Falling Leaves Functions ---
 void Scene_Menu::initLeaves()
@@ -80,6 +89,27 @@ void Scene_Menu::initLeaves()
     }
 }
 
+void Scene_Menu::buildMenu()
+{
+    _menuStrings.clear();
+
+    if (_game->hasScene("PLAY"))
+    {
+        _menuStrings.push_back("Resume");
+    }
+
+    _menuStrings.push_back("Easy");
+    _menuStrings.push_back("Hard");
+    _menuStrings.push_back("How To Play");
+
+    _levelPaths.clear();
+    _levelPaths.push_back("../assets/level1.txt");
+    _levelPaths.push_back("../assets/level2.txt");
+
+    _menuIndex = 0;
+}
+
+
 void Scene_Menu::updateLeaves(sf::Time dt)
 {
     sf::Vector2u winSize = _game->window().getSize();
@@ -94,6 +124,7 @@ void Scene_Menu::updateLeaves(sf::Time dt)
             leaf.sprite.setPosition(pos);
         }
     }
+
 }
 
 void Scene_Menu::renderLeaves()
@@ -104,6 +135,14 @@ void Scene_Menu::renderLeaves()
 
 void Scene_Menu::update(sf::Time dt)
 {
+    static bool firstFrame = true;
+    if (m_firstFrame)
+    {
+        buildMenu();
+        m_firstFrame = false;
+    }
+
+
     static float inputCooldown = 0.f;
     if (inputCooldown > 0.f)
         inputCooldown -= dt.asSeconds();
@@ -168,7 +207,7 @@ void Scene_Menu::sRender()
 
     sf::Text footer;
     footer.setFont(Assets::getInstance().getFont("main"));
-    footer.setString("W/S: Navigate    Enter: Select    Esc: Quit");
+    //footer.setString("W/S: Navigate    Enter: Select    Esc: Quit");
     footer.setCharacterSize(infoFontSize);
     footer.setFillColor(sf::Color(180, 180, 180));
     sf::FloatRect footerBounds = footer.getLocalBounds();
@@ -180,26 +219,35 @@ void Scene_Menu::sRender()
 
 void Scene_Menu::sDoAction(const Command& action)
 {
-    if (action.type() == "QUIT")
+    if (action.type() == "SELECT")
     {
-        _game->quit();
-    }
-    else if (action.type() == "SELECT")
-    {
-        if (_menuIndex == 0)
+        int optionOffset = _game->hasScene("PLAY") ? 1 : 0;
+
+        // Resume
+        if (_game->hasScene("PLAY") && _menuIndex == 0)
+        {
+            std::cout << "Resuming previous game...\n";
+            _game->changeScene("PLAY", nullptr, false);
+        }
+
+        // Level 1
+        if (_menuIndex == 0 + optionOffset)
         {
             std::cout << "Level 1 selected!" << std::endl;
             _game->changeScene("PLAY", std::make_shared<Scene_Frogger>(_game, _levelPaths[0]), true);
         }
-        else if (_menuIndex == 1)
+        // Level 2
+        else if (_menuIndex == 1 + optionOffset)
         {
             std::cout << "Level 2 selected!" << std::endl;
             _game->changeScene("PLAY", std::make_shared<Scene_Frogger>(_game, _levelPaths[1]), true);
         }
-        else if (_menuIndex == 2)
+        // How To Play
+        else if (_menuIndex == 2 + optionOffset)
         {
             std::cout << "How To Play selected!" << std::endl;
             _game->changeScene("PLAY", std::make_shared<HowToPlayScene>(_game), true);
         }
     }
 }
+

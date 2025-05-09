@@ -26,11 +26,15 @@ struct PowerUp {
 struct RiverEnemy {
     sf::Sprite sprite;
     float speed;
+    float originalY = 0.f;
+
 };
 
 struct Log {
     sf::Sprite sprite;
     float speed;
+    float originalY = 0.f;
+
 };
 
 struct TrafficSignal {
@@ -203,6 +207,7 @@ public:
     float slideTimer = 0.f;
     const float slideDuration = 0.5f;
     int currentLevel;
+    sf::Sprite finishLineSprite;
 
     bool jumpSoundPlayed = false;
     bool m_paused = false;

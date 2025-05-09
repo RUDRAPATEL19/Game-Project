@@ -18,9 +18,6 @@ Scene_Frogger::Scene_Frogger(GameEngine* gameEngine, const std::string& levelPat
 }
 
 
-const float safeJumpOffset = 50.f;
-
-
 void Scene_Frogger::init(const std::string& path)
 {
     // clears previous session
@@ -63,6 +60,20 @@ void Scene_Frogger::init(const std::string& path)
         backgroundSprite.setScale(designWidth / bgBounds.width, designHeight / bgBounds.height);
     }
 
+    // --- Initialize Finish Line ---
+    finishLineSprite.setTexture(Assets::getInstance().getTexture("finish"));
+    sf::FloatRect finishBounds = finishLineSprite.getLocalBounds();
+    finishLineSprite.setOrigin(finishBounds.width / 2.f, finishBounds.height / 2.f);
+
+    // Position at top-center of the screen
+    float finishY = 20.f;  // Small margin from top
+    float finishX = designWidth / 2.f;
+    finishLineSprite.setPosition(finishX, finishY);
+
+    // Optional: Scale it with perspective or fixed size
+    finishLineSprite.setScale(1.0f, 1.0f);  // Adjust if needed
+
+
     // Spawn enemy cars.
     float laneTop1 = designHeight * 0.06f;
     float laneTop2 = designHeight * 0.16f;
@@ -75,14 +86,9 @@ void Scene_Frogger::init(const std::string& path)
     spawnEnemyCar(sf::Vector2f(designWidth + 100.f, laneBottom2), -130.f * scaleFactorX);
 
     // Define river lane positions.
-    float riverLaneUpper = designHeight * 0.27f;
-    float riverLaneLower = designHeight * 0.43f;
+    const float riverLaneUpper = designHeight * 0.30f;
+    const float riverLaneLower = designHeight * 0.43f;
     float logEnemyOffset = 20.f;
-    float adjustedUpperLane = riverLaneUpper + logEnemyOffset;
-
-    // Spawn logs and river enemies.
-    spawnLog(sf::Vector2f(-200.f, adjustedUpperLane + safeJumpOffset), 80.f * scaleFactorX);    
-    spawnRiverEnemy(sf::Vector2f(1000.f, adjustedUpperLane + safeJumpOffset), 80.f * scaleFactorX);
 
 
     spawnLog(sf::Vector2f(1200.f, riverLaneLower), -90.f * scaleFactorX);
@@ -183,21 +189,6 @@ void Scene_Frogger::initTrafficSignals() {
     signal1.sequenceOrder = 1;
     trafficSignals.push_back(signal1);
 
-    // --- Signal
-    TrafficSignal signal2;
-    signal2.sprite.setTexture(Assets::getInstance().getTexture("goSafe"));
-    signal2.sprite.setTextureRect(sf::IntRect(114, 193, 30, 63)); 
-    bounds = signal2.sprite.getLocalBounds();
-    signal2.sprite.setOrigin(bounds.width / 2.f, bounds.height / 2.f);
-    float posX2 = 50.f;      
-    float posY2 = winSize.y * 0.11f;
-    signal2.sprite.setPosition(posX2, posY2);
-    signal2.sprite.setScale(1.5f, 1.5f);
-    signal2.state = SignalState::Green;
-    signal2.stateTimer = 0.f;
-    signal2.activated = false;
-    signal2.sequenceOrder = 2;
-    trafficSignals.push_back(signal2);
 }
 
 
@@ -209,8 +200,12 @@ float distance(const sf::Vector2f& a, const sf::Vector2f& b) {
 }
 
 void Scene_Frogger::handleDroneHit() {
-    triggerDeath();
+    if (!m_playerIsHit) {
+        m_playerIsHit = true;
+        triggerDeath();
+    }
 }
+
 
 
 
@@ -410,16 +405,209 @@ void Scene_Frogger::update(sf::Time dt)
     {
         _respawnDelayTimer += dt.asSeconds();
 
+        // Skip only player controls + animation; but let world keep updating
         if (_respawnDelayTimer >= RESPWAN_DELAY)
         {
             init(_levelPath);
-
             m_playerAnimState = PlayerAnimState::Idle;
             _waitingToRespawn = false;
             _respawnDelayTimer = 0.f;
         }
-        return;
     }
+    else
+    {
+        // --- Jump Mechanic ---
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Space))
+        {
+            if (!isJumping && !jumpSoundPlayed)
+            {
+                isJumping = true;
+                jumpTimer = 0.f;
+                jumpStartPosition = playerSprite.getPosition();
+                m_playerAnimState = PlayerAnimState::Jumping;
+
+                MusicPlayer::getInstance().play("hop", false);
+                MusicPlayer::getInstance().play("hop", false);
+
+                jumpSoundPlayed = true;
+            }
+        }
+        else
+        {
+            jumpSoundPlayed = false;
+        }
+
+
+
+        if (isJumping)
+        {
+            jumpTimer += dt.asSeconds();
+            float fraction = jumpTimer / jumpDuration;
+            if (fraction > 1.f) fraction = 1.f;
+
+            float verticalArc = jumpHeight * sin(3.14159f * fraction);
+            float forwardOffset = jumpForward * fraction;
+            sf::Vector2f newPos = jumpStartPosition;
+            newPos.y = jumpStartPosition.y - forwardOffset - verticalArc;
+            playerSprite.setPosition(newPos);
+
+            if (isJumping && jumpTimer >= jumpDuration)
+            {
+                isJumping = false;
+                newPos.y = jumpStartPosition.y - jumpForward;
+                playerSprite.setPosition(newPos);
+                m_playerAnimState = PlayerAnimState::Idle;
+            }
+        }
+
+        //if (m_playerIsHit)
+        //{
+        //    m_playerAnimState = PlayerAnimState::Dying;
+        //    m_animTimer = 0.f;      // Reset the timer
+        //    m_dyingFrameIndex = 0;  // Start from the first dying frame
+        //}
+
+
+
+        // --- Log Riding ---
+        // --- First check if player is on a log ---
+        bool foundLog = false;
+        for (int i = 0; i < logs.size(); ++i) {
+            sf::FloatRect logBounds = logs[i].sprite.getGlobalBounds();
+
+            const float heightReduction = 0.4f;
+            const float widthReduction = 0.1f;
+
+            logBounds.top += logBounds.height * (heightReduction / 2.f);
+            logBounds.height *= (1.f - heightReduction);
+            logBounds.left += logBounds.width * (widthReduction / 2.f);
+            logBounds.width *= (1.f - widthReduction);
+
+            if (playerSprite.getGlobalBounds().intersects(logBounds)) {
+                foundLog = true;
+                currentLogIndex = i;
+                playerSprite.move(logs[i].speed * dt.asSeconds(), 0.f);
+                break;
+            }
+        }
+        onLog = foundLog;
+
+
+        // --- Power-Up Collection Check ---
+        for (auto& pu : powerUps)
+        {
+            if (pu.active && playerSprite.getGlobalBounds().intersects(pu.sprite.getGlobalBounds()))
+            {
+                std::cout << "Safe River Power-Up collected!" << std::endl;
+                hasSafeRiver = true;
+                pu.active = false;
+                pu.sprite.setColor(sf::Color::Transparent);
+                safeRiverSpawnTimer = 0.f;
+                break;
+            }
+        }
+
+        if (!isJumping && !gameFinished && m_playerAnimState != PlayerAnimState::Dying)
+        {
+            float riverTop = winSize.y * 0.22f;
+            float riverBottom = winSize.y * 0.49f;
+            float playerCenterY = playerSprite.getGlobalBounds().top + playerSprite.getGlobalBounds().height / 2.f;
+
+            if (playerCenterY >= riverTop && playerCenterY <= riverBottom && !onLog)
+            {
+                if (hasSafeRiver && sf::Keyboard::isKeyPressed(sf::Keyboard::Z))
+                {
+                    std::cout << "Safe River power-up activated by Z!" << std::endl;
+                    safeRiver();
+                    hasSafeRiver = false;
+                    safeRiverTimer = 0.f;
+                    std::cout << "Player sliding in river!" << std::endl;
+                    m_playerAnimState = PlayerAnimState::Sliding;
+                }
+                else if (!hasSafeRiver)
+                {
+                    std::cout << "Player in river without log and no power-up! Dying." << std::endl;
+                    triggerDeath();
+                }
+            }
+        }
+        // --- Horizontal Movement ---
+        const float moveSpeed = 150.f * scaleFactorX;
+        sf::Vector2f movement(0.f, 0.f);
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::W))
+            movement.y -= moveSpeed * dt.asSeconds();
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::S))
+            movement.y += moveSpeed * dt.asSeconds();
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::A))
+            movement.x -= moveSpeed * dt.asSeconds();
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::D))
+            movement.x += moveSpeed * dt.asSeconds();
+
+
+
+        playerSprite.move(movement);
+
+        // Set player animation state based on movement (if not jumping or dying)
+        if (!isJumping && m_playerAnimState != PlayerAnimState::Dying)
+        {
+            if (movement != sf::Vector2f(0.f, 0.f))
+                m_playerAnimState = PlayerAnimState::Running;
+            else
+                m_playerAnimState = PlayerAnimState::Idle;
+        }
+
+
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Escape))
+        {
+            // Pause the game by keeping PLAY scene and showing MENU
+            if (!_game->hasScene("MENU"))
+            {
+                _game->changeScene("MENU", std::make_shared<Scene_Menu>(_game), false);
+            }
+            else
+            {
+                _game->changeScene("MENU", nullptr, false);
+            }
+            return;
+        }
+
+
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::W) ||
+            sf::Keyboard::isKeyPressed(sf::Keyboard::A) ||
+            sf::Keyboard::isKeyPressed(sf::Keyboard::S) ||
+            sf::Keyboard::isKeyPressed(sf::Keyboard::D))
+        {
+            runSoundTimer += dt.asSeconds();
+            if (runSoundTimer >= runSoundInterval)
+            {
+                if (MusicPlayer::getInstance().getStatus() != sf::SoundSource::Playing)
+                {
+                    MusicPlayer::getInstance().play("run", false);
+                }
+                runSoundTimer = 0.f;
+            }
+        }
+        else
+        {
+            runSoundTimer = 0.f;
+        }
+
+        // --- Apply Perspective Scaling to Player ---
+        float scale = getPerspectiveScalePlayer(playerSprite.getPosition().y);
+        playerSprite.setScale(scale, scale);
+
+        // Optional: Re-center origin if your sprite rect changes dynamically
+        sf::FloatRect bounds = playerSprite.getLocalBounds();
+        playerSprite.setOrigin(bounds.width / 2.f, bounds.height / 2.f);
+
+
+        // Handle player controls only if not waiting
+        // include movement, jumping, powerups, etc.
+        // (all your existing player control code here...)
+
+
+    }
+
 
     if (gameOver)
     {
@@ -427,31 +615,6 @@ void Scene_Frogger::update(sf::Time dt)
     }
 
 
-    if (sf::Keyboard::isKeyPressed(sf::Keyboard::Escape))
-    {
-        _game->changeScene("MENU", std::make_shared<Scene_Menu>(_game), true);
-        return;
-    }
-
-    if (sf::Keyboard::isKeyPressed(sf::Keyboard::W) ||
-        sf::Keyboard::isKeyPressed(sf::Keyboard::A) ||
-        sf::Keyboard::isKeyPressed(sf::Keyboard::S) ||
-        sf::Keyboard::isKeyPressed(sf::Keyboard::D))
-    {
-        runSoundTimer += dt.asSeconds();
-        if (runSoundTimer >= runSoundInterval)
-        {
-            if (MusicPlayer::getInstance().getStatus() != sf::SoundSource::Playing)
-            {
-                MusicPlayer::getInstance().play("run", false);
-            }
-            runSoundTimer = 0.f;
-        }
-    }
-    else
-    {
-        runSoundTimer = 0.f;
-    }
 
     // --- Win Condition Check (Game Finished) ---
     if (!gameFinished && playerSprite.getPosition().y <= 5.f)
@@ -461,24 +624,25 @@ void Scene_Frogger::update(sf::Time dt)
         std::cout << "Game Finished: You Won!" << std::endl;
     }
 
-    // --- Apply Perspective Scaling to Player ---
-    float scale = getPerspectiveScalePlayer(playerSprite.getPosition().y);
-    playerSprite.setScale(scale, scale);
-
-    // Optional: Re-center origin if your sprite rect changes dynamically
-    sf::FloatRect bounds = playerSprite.getLocalBounds();
-    playerSprite.setOrigin(bounds.width / 2.f, bounds.height / 2.f);
+    
 
 
     if (gameOver || gameFinished)
     {
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Escape))
         {
-            // Return to main menu.
-            std::cout << "ESC pressed: Returning to Main Menu" << std::endl;
-            _game->changeScene("MENU", std::make_shared<Scene_Menu>(_game), true);
-            return;  // Skip further processing.
+            // Pause the game by keeping PLAY scene and showing MENU
+            if (!_game->hasScene("MENU"))
+            {
+                _game->changeScene("MENU", std::make_shared<Scene_Menu>(_game), false);
+            }
+            else
+            {
+                _game->changeScene("MENU", nullptr, false);
+            }
+            return;
         }
+
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::W) || sf::Keyboard::isKeyPressed(sf::Keyboard::Up))
         {
             finishOption = 0;  // Choose "Play Again"
@@ -529,25 +693,14 @@ void Scene_Frogger::update(sf::Time dt)
                 float spawnX = (winSize.x * 0.1f) +
                     static_cast<float>(std::rand()) / (static_cast<float>(RAND_MAX / (winSize.x * 0.8f)));
                 sf::Vector2f powerUpPos(spawnX, spawnY);
+				spawnPowerUp(powerUpPos, 0.f);
                 safeRiverSpawnTimer = 0.f;
                 safeRiverSpawnDelay = 5.f + static_cast<float>(std::rand() % 6);
             }
         }
     }
 
-    // --- Power-Up Collection Check ---
-    for (auto& pu : powerUps)
-    {
-        if (pu.active && playerSprite.getGlobalBounds().intersects(pu.sprite.getGlobalBounds()))
-        {
-            std::cout << "Safe River Power-Up collected!" << std::endl;
-            hasSafeRiver = true;
-            pu.active = false;
-            pu.sprite.setColor(sf::Color::Transparent);
-            safeRiverSpawnTimer = 0.f;
-            break;
-        }
-    }
+    
 
     // --- Update Safe River Power-Up Timer ---
     if (hasSafeRiver)
@@ -561,28 +714,7 @@ void Scene_Frogger::update(sf::Time dt)
         }
     }
 
-    // --- Horizontal Movement ---
-    const float moveSpeed = 150.f * scaleFactorX;
-    sf::Vector2f movement(0.f, 0.f);
-    if (sf::Keyboard::isKeyPressed(sf::Keyboard::W))
-        movement.y -= moveSpeed * dt.asSeconds();
-    if (sf::Keyboard::isKeyPressed(sf::Keyboard::S))
-        movement.y += moveSpeed * dt.asSeconds();
-    if (sf::Keyboard::isKeyPressed(sf::Keyboard::A))
-        movement.x -= moveSpeed * dt.asSeconds();
-    if (sf::Keyboard::isKeyPressed(sf::Keyboard::D))
-        movement.x += moveSpeed * dt.asSeconds();
-
-    playerSprite.move(movement);
-
-    // Set player animation state based on movement (if not jumping or dying)
-    if (!isJumping && m_playerAnimState != PlayerAnimState::Dying)
-    {
-        if (movement != sf::Vector2f(0.f, 0.f))
-            m_playerAnimState = PlayerAnimState::Running;
-        else
-            m_playerAnimState = PlayerAnimState::Idle;
-    }
+   
 
 
 
@@ -649,87 +781,7 @@ void Scene_Frogger::update(sf::Time dt)
 
 
 
-    // --- Jump Mechanic ---
-    if (sf::Keyboard::isKeyPressed(sf::Keyboard::Space))
-    {
-        if (!isJumping && !jumpSoundPlayed)
-        {
-            isJumping = true;
-            jumpTimer = 0.f;
-            jumpStartPosition = playerSprite.getPosition();
-            m_playerAnimState = PlayerAnimState::Jumping;
-
-            MusicPlayer::getInstance().play("hop", false);
-            MusicPlayer::getInstance().play("hop", false);
-
-            jumpSoundPlayed = true;
-        }
-    }
-    else
-    {
-        jumpSoundPlayed = false;
-    }
-
-
-
-    if (isJumping)
-    {
-        jumpTimer += dt.asSeconds();
-        float fraction = jumpTimer / jumpDuration;
-        if (fraction > 1.f) fraction = 1.f;
-
-        float verticalArc = jumpHeight * sin(3.14159f * fraction);
-        float forwardOffset = jumpForward * fraction;
-        sf::Vector2f newPos = jumpStartPosition;
-        newPos.y = jumpStartPosition.y - forwardOffset - verticalArc;
-        playerSprite.setPosition(newPos);
-
-        if (isJumping && jumpTimer >= jumpDuration)
-        {
-            isJumping = false;
-            newPos.y = jumpStartPosition.y - jumpForward;
-            playerSprite.setPosition(newPos);
-            m_playerAnimState = PlayerAnimState::Idle;
-        }
-    }
-
-    //if (m_playerIsHit)
-    //{
-    //    m_playerAnimState = PlayerAnimState::Dying;
-    //    m_animTimer = 0.f;      // Reset the timer
-    //    m_dyingFrameIndex = 0;  // Start from the first dying frame
-    //}
-
-
-
-    // --- Log Riding ---
-    if (!isJumping)
-    {
-        bool foundLog = false;
-        const float margin = 5.f;
-        for (int i = 0; i < logs.size(); ++i)
-        {
-            sf::FloatRect logBounds = logs[i].sprite.getGlobalBounds();
-            logBounds.left -= margin;
-            logBounds.top -= margin;
-            logBounds.width += 2 * margin;
-            logBounds.height += 2 * margin;
-            if (playerSprite.getGlobalBounds().intersects(logBounds))
-            {
-                foundLog = true;
-                currentLogIndex = i;
-                sf::FloatRect actualLogBounds = logs[i].sprite.getGlobalBounds();
-                sf::FloatRect playerBounds = playerSprite.getGlobalBounds();
-                float newY = actualLogBounds.top - playerBounds.height / 2.f;
-                sf::Vector2f pos = playerSprite.getPosition();
-                pos.y = newY;
-                playerSprite.setPosition(pos);
-                playerSprite.move(logs[i].speed * dt.asSeconds(), 0.f);
-                break;
-            }
-        }
-        onLog = foundLog;
-    }
+    
 
     // --- Safe Landing on Road Check ---
     float roadThreshold = winSize.y * 0.70f;
@@ -745,30 +797,7 @@ void Scene_Frogger::update(sf::Time dt)
     }
 
     // --- River Collision Check --- 
-    if (!isJumping && !gameFinished && m_playerAnimState != PlayerAnimState::Dying)
-    {
-        float riverTop = winSize.y * 0.22f;
-        float riverBottom = winSize.y * 0.49f;
-        float playerCenterY = playerSprite.getGlobalBounds().top + playerSprite.getGlobalBounds().height / 2.f;
-
-        if (playerCenterY >= riverTop && playerCenterY <= riverBottom && !onLog)
-        {
-            if (hasSafeRiver && sf::Keyboard::isKeyPressed(sf::Keyboard::Z))
-            {
-                std::cout << "Safe River power-up activated by Z!" << std::endl;
-                safeRiver();
-                hasSafeRiver = false;
-                safeRiverTimer = 0.f;
-                std::cout << "Player sliding in river!" << std::endl;
-                m_playerAnimState = PlayerAnimState::Sliding;
-            }
-            else if (!hasSafeRiver)
-            {
-                std::cout << "Player in river without log and no power-up! Dying." << std::endl;
-                triggerDeath();
-            }
-        }
-    }
+    
 
 
 
@@ -780,17 +809,17 @@ void Scene_Frogger::update(sf::Time dt)
     float laneTop2 = designHeight * 0.16f;
     float laneBottom1 = designHeight * 0.63f;
     float laneBottom2 = designHeight * 0.84f;
-    float riverLaneUpper = designHeight * 0.38f;
-    float riverLaneLower = designHeight * 0.55f;
+    float riverLaneUpper = designHeight * 0.30f;
+    float riverLaneLower = designHeight * 0.43f;
+
     float logEnemyOffset = 20.f; // Vertical offset for logs in upper lane
-    float adjustedUpperLane = riverLaneUpper + logEnemyOffset;
 
     const float clearance = 100.f;
 
     // Increase spawn probability values as desired.
     float vehicleSpawnChance = (currentLevel == 2) ? 0.10f : 0.05f;
     float logSpawnChance = 0.02f; 
-    float enemySpawnChance = 0.05f;
+    float enemySpawnChance = 0.09f;
 
 
     // --- Spawn Enemy Cars ---
@@ -834,64 +863,37 @@ void Scene_Frogger::update(sf::Time dt)
     if (static_cast<float>(std::rand()) / RAND_MAX < logSpawnChance * dt.asSeconds())
     {
         int lane = std::rand() % 2;
-        float logY;
-        if (lane == 0) {
-            // Upper lane: add extra safe jump offset
-            logY = adjustedUpperLane + safeJumpOffset;
-            std::cout << "Spawning log in upper lane at Y: " << logY << std::endl;
-        }
-        else {
-            logY = riverLaneLower;
-        }
-        float startX, speed;
-        if (lane == 0)
-        {
-            // Upper lane: move left-to-right.
-            startX = -200.f;
-            speed = 80.f * scaleFactorX;
-        }
-        else
-        {
-            // Lower lane: move right-to-left.
-            startX = designWidth + 200.f;
-            speed = -90.f * scaleFactorX;
-        }
-        if (isLaneClearForLog(logY, startX, clearance))
-        {
-            spawnLog(sf::Vector2f(startX, logY), speed);
-        }
+        float laneY = (lane == 0) ? riverLaneUpper : riverLaneLower;
+
+        float startX = (lane == 0) ? -200.f : designWidth + 200.f;
+        float speed = (lane == 0) ? 80.f * scaleFactorX : -90.f * scaleFactorX;
+
+        if (isLaneClearForLog(laneY, startX, clearance))
+            spawnLog(sf::Vector2f(startX, laneY), speed);
     }
 
+
     // --- Spawn River Enemies ---
-    if (static_cast<float>(std::rand()) / RAND_MAX < enemySpawnChance * dt.asSeconds())
-    {
-        int lane = std::rand() % 2;  // 0 for upper lane, 1 for lower lane
-        float enemyY;
-        if (lane == 0) {
-            enemyY = adjustedUpperLane + safeJumpOffset;  // Add extra offset for upper lane
-            std::cout << "Spawning river enemy in upper lane at Y: " << enemyY << std::endl;
-        }
-        else {
-            enemyY = riverLaneLower;
-        }
-        float startX, speed;
-        if (lane == 0)
-        {
-            // Upper lane: move left-to-right.
-            startX = -150.f;
-            speed = 80.f * scaleFactorX;
-        }
-        else
-        {
-            // Lower lane: move right-to-left.
-            startX = designWidth + 150.f;
-            speed = -90.f * scaleFactorX;
-        }
-        if (isLaneClearForRiverEnemy(enemyY, startX, clearance))
-        {
-            spawnRiverEnemy(sf::Vector2f(startX, enemyY), speed);
-        }
+    float laneY1 = riverLaneUpper;
+    float laneY2 = riverLaneLower;
+
+    float startX1 = -150.f;
+    float startX2 = designWidth + 150.f;
+
+    float speed1 = 80.f * scaleFactorX;     // moving right
+    float speed2 = -90.f * scaleFactorX;    // moving left
+
+    if ((float)std::rand() / RAND_MAX < enemySpawnChance * dt.asSeconds()) {
+        if (isLaneClearForRiverEnemy(laneY1, startX1, clearance))
+            spawnRiverEnemy({ startX1, laneY1 }, speed1);
     }
+
+    if ((float)std::rand() / RAND_MAX < enemySpawnChance * dt.asSeconds()) {
+        if (isLaneClearForRiverEnemy(laneY2, startX2, clearance))
+            spawnRiverEnemy({ startX2, laneY2 }, speed2);
+    }
+
+
 
     // --- Safe Passage Effect on Enemy Cars ---
     const float signalTolerance = 50.f;
@@ -938,9 +940,10 @@ void Scene_Frogger::update(sf::Time dt)
         log.sprite.move(log.speed * dt.asSeconds(), 0.f);
         sf::FloatRect logBounds = log.sprite.getGlobalBounds();
         if (log.speed > 0 && logBounds.left > winSize.x)
-            log.sprite.setPosition(-logBounds.width - 50.f, log.sprite.getPosition().y);
+            log.sprite.setPosition(-logBounds.width - 50.f, log.originalY);
         else if (log.speed < 0 && (logBounds.left + logBounds.width) < 0)
-            log.sprite.setPosition(winSize.x + 50.f, log.sprite.getPosition().y);
+            log.sprite.setPosition(winSize.x + 50.f, log.originalY);
+
     }
 
 
@@ -956,9 +959,10 @@ void Scene_Frogger::update(sf::Time dt)
 
         sf::FloatRect enemyBounds = enemy.sprite.getGlobalBounds();
         if (enemy.speed > 0 && enemyBounds.left > winSize.x)
-            enemy.sprite.setPosition(-enemyBounds.width - 100.f, enemy.sprite.getPosition().y);
+            enemy.sprite.setPosition(-enemyBounds.width - 100.f, enemy.originalY);
         else if (enemy.speed < 0 && (enemyBounds.left + enemyBounds.width) < 0)
-            enemy.sprite.setPosition(winSize.x + 100.f, enemy.sprite.getPosition().y);
+            enemy.sprite.setPosition(winSize.x + 100.f, enemy.originalY);
+
     }
 
 
@@ -997,9 +1001,9 @@ bool Scene_Frogger::isLaneClearForLog(float laneY, float spawnX, float clearance
 {
     for (const auto& log : logs)
     {
-        if (std::abs(log.sprite.getPosition().y - laneY) < 10.f)
+        if (std::abs(log.sprite.getPosition().y - laneY) < 25.f)
         {
-            if (std::abs(log.sprite.getPosition().x - spawnX) < clearance)
+            if (std::abs(log.sprite.getPosition().x - spawnX) < clearance * 0.75f)
                 return false;
         }
     }
@@ -1010,7 +1014,7 @@ bool Scene_Frogger::isLaneClearForRiverEnemy(float laneY, float spawnX, float cl
 {
     for (const auto& enemy : riverEnemies)
     {
-        if (std::abs(enemy.sprite.getPosition().y - laneY) < 10.f)
+        if (std::abs(enemy.sprite.getPosition().y - laneY) < 30.f)
         {
             if (std::abs(enemy.sprite.getPosition().x - spawnX) < clearance)
                 return false;
@@ -1020,12 +1024,13 @@ bool Scene_Frogger::isLaneClearForRiverEnemy(float laneY, float spawnX, float cl
 }
 
 
+
 void Scene_Frogger::sDoAction(const Command& action)
 {
     if (action.type() == "START") {
         if (action.name() == "MENU") {
             std::cout << "Returning to Main Menu..." << std::endl;
-            _game->changeScene("MENU", std::make_shared<Scene_Menu>(_game));
+            _game->changeScene("MENU", std::make_shared<Scene_Menu>(_game), true);
         }
     }
 }
@@ -1035,11 +1040,51 @@ void Scene_Frogger::sRender() {
     _game->window().clear();
     // Draw the background.
     _game->window().draw(backgroundSprite);
+    _game->window().draw(finishLineSprite);
+
+    
+
 
 
     // Draw enemy cars.
     for (const auto& car : enemyCars) {
         _game->window().draw(car.sprite);
+    }
+
+    {
+        const float ICON_SCALE = 1.3f;
+        const float PADDING = 20.f;
+        const float SPACING = 20.f;
+
+        sf::Sprite lifeIcon;
+        lifeIcon.setTexture(Assets::getInstance().getTexture("goSafe"));
+        lifeIcon.setTextureRect(sf::IntRect(12, 1, 28, 63));
+        lifeIcon.setScale(ICON_SCALE, ICON_SCALE);
+
+        float iconAreaWidth = m_lives * (lifeIcon.getGlobalBounds().width + SPACING) - SPACING;
+
+        float extraWidth = 100.f;
+        float extraHeight = 60.f;
+
+        float desiredWidth = iconAreaWidth + extraWidth;
+        float desiredHeight = lifeIcon.getGlobalBounds().height + extraHeight;
+
+        sf::Sprite lifeBg;
+        lifeBg.setTexture(Assets::getInstance().getTexture("lifebg"));
+        sf::FloatRect bgBounds = lifeBg.getLocalBounds();
+        lifeBg.setScale(desiredWidth / bgBounds.width, desiredHeight / bgBounds.height);
+        lifeBg.setPosition(PADDING - 10.f, PADDING - 10.f);
+        _game->window().draw(lifeBg);
+
+        // Draw icons
+        float iconX = PADDING + (extraWidth - 2 * PADDING) / 2.f;
+        float iconY = PADDING + (extraHeight - 2 * PADDING) / 2.f;
+        for (int i = 0; i < m_lives; ++i)
+        {
+            lifeIcon.setPosition(iconX, iconY);
+            _game->window().draw(lifeIcon);
+            iconX += lifeIcon.getGlobalBounds().width + SPACING;
+        }
     }
 
     // Draw logs.
@@ -1129,12 +1174,43 @@ void Scene_Frogger::sRender() {
         drawBounds(playerLegBox);
 
         // Enemy cars
-        for (const auto& car : enemyCars)
-            drawBounds(car.sprite.getGlobalBounds());
+        for (const auto& car : enemyCars) {
+
+            const float bottomPortion = 0.6f;
+
+            sf::FloatRect bounds = car.sprite.getGlobalBounds();
+            float reducedHeight = bounds.height * bottomPortion;
+
+            // Start Y from the bottom portion
+            float offsetY = bounds.height * (1.f - bottomPortion);
+
+            sf::FloatRect customBox(bounds.left, bounds.top + offsetY, bounds.width, reducedHeight);
+
+            sf::RectangleShape debugRect;
+            debugRect.setPosition(customBox.left, customBox.top);
+            debugRect.setSize({ customBox.width, customBox.height });
+            debugRect.setFillColor(sf::Color::Transparent);
+            debugRect.setOutlineColor(sf::Color::Cyan);
+            debugRect.setOutlineThickness(1.f);
+            _game->window().draw(debugRect);
+        }
+
 
         // Logs
-        for (const auto& log : logs)
-            drawBounds(log.sprite.getGlobalBounds());
+        for (const auto& log : logs) {
+            sf::FloatRect bounds = log.sprite.getGlobalBounds();
+
+            const float heightReduction = 0.4f;  // Match update logic
+            const float widthReduction = 0.1f;
+
+            bounds.top += bounds.height * (heightReduction / 2.f);
+            bounds.height *= (1.f - heightReduction);
+            bounds.left += bounds.width * (widthReduction / 2.f);
+            bounds.width *= (1.f - widthReduction);
+
+            drawBounds(bounds);
+        }
+
 
         // River enemies
         for (const auto& enemy : riverEnemies)
@@ -1157,48 +1233,6 @@ void Scene_Frogger::sRender() {
             }
         }
     }
-
-
-
-
-    // Draw Lives Label + Icons
-    static const sf::IntRect LIFE_ICON_RECT(12, 1, 28, 63);
-    const float ICON_SCALE = 1.0f;
-    const float PADDING = 60.f;
-    const float SPACING = 17.f;
-    const unsigned FONT_SIZE = 50;
-
-    // 1) Draw the "Lives:" text
-    sf::Text livesLabel;
-    livesLabel.setFont(Assets::getInstance().getFont("main"));
-    livesLabel.setString("Lives:");
-    livesLabel.setCharacterSize(FONT_SIZE);
-    livesLabel.setFillColor(sf::Color::White);
-    livesLabel.setStyle(sf::Text::Bold);
-    livesLabel.setPosition(PADDING, PADDING);
-    _game->window().draw(livesLabel);
-
-    // 2) Prepare the icon sprite
-    sf::Sprite lifeIcon;
-    lifeIcon.setTexture(Assets::getInstance().getTexture("goSafe"));
-    lifeIcon.setTextureRect(LIFE_ICON_RECT);
-    lifeIcon.setScale(ICON_SCALE, ICON_SCALE);
-
-    // 3) Compute starting X after the label
-    float xStart = livesLabel.getGlobalBounds().left
-        + livesLabel.getGlobalBounds().width
-        + SPACING;
-
-    // 4) Draw one icon per life
-    for (int i = 0; i < m_lives; ++i)
-    {
-        lifeIcon.setPosition(
-            xStart + i * (lifeIcon.getGlobalBounds().width + SPACING),
-            PADDING + (FONT_SIZE - lifeIcon.getGlobalBounds().height) * 0.5f
-        );
-        _game->window().draw(lifeIcon);
-    }
-
 
 
     // Draw Power-Up Status.
@@ -1398,30 +1432,22 @@ void Scene_Frogger::spawnEnemyCar(const sf::Vector2f& position, float speed)
 
 void Scene_Frogger::spawnLog(const sf::Vector2f& position, float speed)
 {
-    // Example: three boats, each 64x32 in the texture
-    sf::IntRect boatRects[3] = {
-        sf::IntRect(0, 102, 100, 76),
-        sf::IntRect(0, 0, 100, 77),
-        sf::IntRect(0, 203, 100, 77)
-    };
-
     Log log;
-    log.sprite.setTexture(Assets::getInstance().getTexture("boats"));
+    log.sprite.setTexture(Assets::getInstance().getTexture("raft"));  // Use raft texture
+    log.originalY = position.y;
 
-    // Pick a random boat frame
-    int boatType = std::rand() % 3;
-    log.sprite.setTextureRect(boatRects[boatType]);
+    // Scale with perspective
+    float scale = getPerspectiveScale(position.y);
+    log.sprite.setScale(scale, scale);
 
-    // Set position, scale, etc.
-    log.sprite.setPosition(position);
-    log.sprite.setScale(scaleFactorX, scaleFactorY);
-    log.speed = speed;
-
+    // Center the log's origin
     sf::FloatRect bounds = log.sprite.getLocalBounds();
     log.sprite.setOrigin(bounds.width / 2.f, bounds.height / 2.f);
 
-    logs.push_back(log);
+    log.sprite.setPosition(position);
+    log.speed = speed;
 
+    logs.push_back(log);
 }
 
 const sf::Vector2f Scene_Frogger::SAFE_RIVER_SCALE(1.5f, 1.5f);
@@ -1431,21 +1457,23 @@ const sf::Vector2f Scene_Frogger::RIVER_ENEMY_SCALE(1.5f, 1.5f);
 void Scene_Frogger::spawnRiverEnemy(const sf::Vector2f& position, float speed)
 {
     RiverEnemy enemy;
-    enemy.sprite.setTexture(Assets::getInstance().getTexture("Entities"));
-    enemy.sprite.setTextureRect(sf::IntRect(10, 231, 83, 42));  // Region for river enemy
+    enemy.sprite.setTexture(Assets::getInstance().getTexture("shark"));
+
+
     sf::FloatRect bounds = enemy.sprite.getLocalBounds();
     enemy.sprite.setOrigin(bounds.width / 2.f, bounds.height / 2.f);
+
+    float scale = getPerspectiveScale(position.y);
+    float scaleX = (speed > 0) ? -scale : scale;
+    enemy.sprite.setScale(scaleX, scale);
+
     enemy.sprite.setPosition(position);
+    enemy.originalY = position.y; 
     enemy.speed = speed;
-
-    enemy.sprite.setScale(RIVER_ENEMY_SCALE);
-
-    std::cout << "River enemy new scale: "
-              << enemy.sprite.getScale().x << ", "
-              << enemy.sprite.getScale().y << std::endl;
 
     riverEnemies.push_back(enemy);
 }
+
 
 
 void Scene_Frogger::spawnDrone(const sf::Vector2f& position, float speed) {
@@ -1491,14 +1519,27 @@ void Scene_Frogger::sCollisions(sf::Time dt)
     };
 
     bool collision = false;
-    for (auto& car : enemyCars)
+    for (const auto& car : enemyCars)
     {
-        if (legBox.intersects(car.sprite.getGlobalBounds()))
+        sf::FloatRect carBounds = car.sprite.getGlobalBounds();
+        const float carBottomPortion = 0.6f;
+        float carReducedHeight = carBounds.height * carBottomPortion;
+        float carOffsetY = carBounds.height * (1.f - carBottomPortion);
+
+        sf::FloatRect carHitBox{
+            carBounds.left,
+            carBounds.top + carOffsetY,
+            carBounds.width,
+            carReducedHeight
+        };
+
+        if (legBox.intersects(carHitBox))
         {
             collision = true;
             break;
         }
     }
+
 
     if (!collision)
     {

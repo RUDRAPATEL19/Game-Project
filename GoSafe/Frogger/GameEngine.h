@@ -24,6 +24,8 @@ public:
 	void						init(const std::string& path);
 	void						sUserInput();
 	std::shared_ptr<Scene>		currentScene();
+	std::map<std::string, std::shared_ptr<Scene>> m_sceneMap;
+	std::shared_ptr<Scene> m_activeScene;
 
 	// stats
 	sf::Text					_statisticsText;
@@ -42,6 +44,10 @@ public:
 	void				run();
 	void				quitLevel();
 	void				backLevel();
+	std::string _pausedSceneName = "";
+
+	void resumeScene();
+	bool hasScene(const std::string& name) const;
 
 	sf::RenderWindow&	window();
 

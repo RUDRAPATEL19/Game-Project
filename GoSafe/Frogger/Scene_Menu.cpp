@@ -11,9 +11,11 @@
 Scene_Menu::Scene_Menu(GameEngine* gameEngine)
     : Scene(gameEngine)
 {
+    fromPausedGame = _game->fromPausedGameFlag;
     init();
     initLeaves();
 }
+
 
 void Scene_Menu::init()
 {
@@ -34,7 +36,7 @@ void Scene_Menu::init()
     _title = "Go Safe!";
 
     // Show resume only if there is a paused scene
-    if (!_game->_pausedSceneName.empty())
+    if (fromPausedGame || !_game->_pausedSceneName.empty())
     {
         _menuStrings.push_back("Resume");
     }
@@ -99,24 +101,20 @@ void Scene_Menu::buildMenu()
     _menuStrings.clear();
     _levelPaths.clear();
 
-    if (fromPausedGame)
+    if (!_game->_pausedSceneName.empty())
     {
         _menuStrings.push_back("Resume");
-        _menuStrings.push_back("How To Play");
     }
-    else
+
+    if (!fromPausedGame)
     {
-        if (_game->hasScene("PLAY"))
-        {
-            _menuStrings.push_back("Resume");
-        }
         _menuStrings.push_back("Easy");
         _menuStrings.push_back("Hard");
-        _menuStrings.push_back("How To Play");
-
         _levelPaths.push_back("../assets/level1.txt");
         _levelPaths.push_back("../assets/level2.txt");
     }
+
+    _menuStrings.push_back("How To Play");
 
     _menuIndex = 0;
 }
@@ -232,31 +230,38 @@ void Scene_Menu::sRender()
 
 void Scene_Menu::sDoAction(const Command& action)
 {
-    if (action.type() == "SELECT")
+    if (action.type() != "SELECT") return;
+
+    const std::string& selectedOption = _menuStrings[_menuIndex];
+
+    if (selectedOption == "Resume")
     {
-        int offset = (!_game->_pausedSceneName.empty()) ? 1 : 0;
-
-        if (_menuStrings[0] == "Resume" && _menuIndex == 0)
-        {
-            _game->changeScene(_game->_pausedSceneName, nullptr, false);
-            _game->_pausedSceneName = "";
-            return;
-        }
-
-        if (!fromPausedGame)
-        {
-            if (_menuIndex == 0 + offset)
-                _game->changeScene("PLAY", std::make_shared<Scene_Frogger>(_game, _levelPaths[0]), true);
-            else if (_menuIndex == 1 + offset)
-                _game->changeScene("PLAY", std::make_shared<Scene_Frogger>(_game, _levelPaths[1]), true);
-        }
-
-        if ((_menuStrings.size() >= 2 && _menuStrings[_menuIndex] == "How To Play"))
-        {
-            _game->changeScene("PLAY", std::make_shared<HowToPlayScene>(_game), true);
-        }
+        _game->changeScene(_game->_pausedSceneName, nullptr, false);
+        _game->_pausedSceneName.clear();
+        _game->fromPausedGameFlag = false;
 
     }
+    else if (selectedOption == "Easy")
+    {
+        if (_levelPaths.size() >= 1)
+        {
+            _game->changeScene("PLAY", std::make_shared<Scene_Frogger>(_game, _levelPaths[0]), true);
+        }
+    }
+    else if (selectedOption == "Hard")
+    {
+        if (_levelPaths.size() >= 2)
+        {
+            _game->changeScene("PLAY", std::make_shared<Scene_Frogger>(_game, _levelPaths[1]), true);
+        }
+    }
+    else if (selectedOption == "How To Play")
+    {
+        _game->fromPausedGameFlag = true; 
+        auto howToScene = std::make_shared<HowToPlayScene>(_game);
+        _game->changeScene("HOWTO", howToScene, false); 
+    }
+
 }
 
 

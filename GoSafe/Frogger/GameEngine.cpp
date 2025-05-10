@@ -99,35 +99,47 @@ void GameEngine::loadConfigFromFile(const std::string &path, unsigned int &width
 
 void GameEngine::sUserInput()
 {
-	sf::Event event;
-	while (_window.pollEvent(event))
-	{
-		if (event.type == sf::Event::Closed)  
-			quit();  
+    sf::Event event;
+    while (_window.pollEvent(event))
+    {
+        if (event.type == sf::Event::Closed)
+            quit();
 
         if (event.type == sf::Event::KeyPressed)
         {
+            auto scene = currentScene();
+            if (!scene) return;
+
             switch (event.key.code)
             {
             case sf::Keyboard::Enter:
-                currentScene()->doAction(Command("Enter", "SELECT"));
+                scene->doAction(Command("Enter", "SELECT"));
                 break;
             case sf::Keyboard::Escape:
-                currentScene()->doAction(Command("Escape", "QUIT"));
+                scene->doAction(Command("Escape", "QUIT"));
                 break;
             default:
                 break;
             }
         }
-
-	}
+    }
 }
+
 
 
 std::shared_ptr<Scene> GameEngine::currentScene()
 {
-	return _sceneMap.at(_currentScene);
+    if (_sceneMap.contains(_currentScene))
+    {
+        return _sceneMap[_currentScene];
+    }
+    else
+    {
+        std::cerr << "Error: currentScene '" << _currentScene << "' not found in scene map.\n";
+        return nullptr;
+    }
 }
+
 
 void GameEngine::changeScene(const std::string& sceneName,
     std::shared_ptr<Scene> scene,
@@ -136,6 +148,7 @@ void GameEngine::changeScene(const std::string& sceneName,
     if (_currentScene != "MENU" && sceneName == "MENU")
     {
         _pausedSceneName = _currentScene;
+        fromPausedGameFlag = true;
     }
 
     if (endCurrentScene)
@@ -144,6 +157,11 @@ void GameEngine::changeScene(const std::string& sceneName,
     }
 
     if (scene != nullptr)
+    {
+        _sceneMap[sceneName] = scene;
+    }
+
+    if (!_sceneMap.contains(sceneName) && scene != nullptr)
     {
         _sceneMap[sceneName] = scene;
     }
@@ -162,6 +180,7 @@ void GameEngine::changeScene(const std::string& sceneName,
 
 
 
+
 void GameEngine::quit()
 {
 	_window.close();
@@ -175,24 +194,24 @@ void GameEngine::run()
 	sf::Clock clock;
 	sf::Time timeSinceLastUpdate = sf::Time::Zero;
 
-	while (isRunning())
-	{
-		sUserInput();								
+    while (isRunning())
+    {
+        sUserInput();
+        timeSinceLastUpdate += clock.restart();
 
-		timeSinceLastUpdate += clock.restart();		 
-		while (timeSinceLastUpdate > SPF)
-		{
-			currentScene()->update(SPF);			
-			timeSinceLastUpdate -= SPF;
-		}
+        if (auto scene = currentScene())
+        {
+            while (timeSinceLastUpdate > SPF)
+            {
+                scene->update(SPF);
+                timeSinceLastUpdate -= SPF;
+            }
 
-		currentScene()->sRender();	
+            scene->sRender();
+            window().display();
+        }
+    }
 
-		// draw stats
-
-		// display
-		window().display();
-	}
 }
 
 void GameEngine::quitLevel() {

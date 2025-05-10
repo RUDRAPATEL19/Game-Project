@@ -1,4 +1,4 @@
-#include "HowToPlayScene.h"
+﻿#include "HowToPlayScene.h"
 #include "Scene_Menu.h"
 #include "Leaf.h"
 #include "Assets.h"
@@ -45,8 +45,12 @@ void HowToPlayScene::update(sf::Time dt)
     updateLeaves(dt);
 
     if (sf::Keyboard::isKeyPressed(sf::Keyboard::Escape)) {
-        _game->changeScene("MENU", std::make_shared<Scene_Menu>(_game), true);
+        _game->fromPausedGameFlag = true;
+        auto menu = std::make_shared<Scene_Menu>(_game);
+        _game->changeScene("MENU", menu, false);
+
     }
+
 }
 
 void HowToPlayScene::updateLeaves(sf::Time dt)
@@ -110,10 +114,12 @@ void HowToPlayScene::sRender()
     std::string instrText =
         " Use W, A, S, D to move.\n\n"
         " Press Space to jump on the boat.\n\n"
+        " Press P to Pause game, ESC to go back to Menu.\n\n"
         " Avoid enemy cars and river enemies as well as river.\n\n"
         " Drones will attack with lasers; avoid them.\n\n"
         " Traffic Signals: Cars stop at red, slows down when yellow\n\n"
-        " When Red, press X for safe passage.\n\n"
+        " Safe River power-up will help you to cross river without dying in it.\n\n"
+        " Safe River power-up will be activated for 7 seconds\n\n"
         " Reach the top to win the game.\n\n"
         " Press ESC to return to Main Menu.";
     instructions.setString(instrText);

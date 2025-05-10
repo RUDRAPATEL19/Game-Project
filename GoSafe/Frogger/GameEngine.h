@@ -45,6 +45,7 @@ public:
 	void				quitLevel();
 	void				backLevel();
 	std::string _pausedSceneName = "";
+	bool fromPausedGameFlag = false;
 
 	void resumeScene();
 	bool hasScene(const std::string& name) const;

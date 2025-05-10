@@ -66,7 +66,7 @@ void Scene_Frogger::init(const std::string& path)
     finishLineSprite.setOrigin(finishBounds.width / 2.f, finishBounds.height / 2.f);
 
     // Position at top-center of the screen
-    float finishY = 20.f;  // Small margin from top
+    float finishY = 20.f;
     float finishX = designWidth / 2.f;
     finishLineSprite.setPosition(finishX, finishY);
 
@@ -555,10 +555,12 @@ void Scene_Frogger::update(sf::Time dt)
 
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Escape))
         {
+            _game->fromPausedGameFlag = true;
+            _game->_pausedSceneName = "PLAY";
+
             auto menu = std::make_shared<Scene_Menu>(_game);
             menu->fromPausedGame = true;
-            _game->changeScene("MENU", menu, false); // false means don't end current scene
-            return;
+            _game->changeScene("MENU", menu, false);
         }
 
 
@@ -602,12 +604,19 @@ void Scene_Frogger::update(sf::Time dt)
 
 
     // --- Win Condition Check (Game Finished) ---
-    if (!gameFinished && playerSprite.getPosition().y <= 5.f)
+    if (!gameFinished)
     {
-        gameFinished = true;
-        finishOption = 0;
-        std::cout << "Game Finished: You Won!" << std::endl;
+        sf::FloatRect playerBounds = playerSprite.getGlobalBounds();
+        sf::FloatRect finishBounds = finishLineSprite.getGlobalBounds();
+
+        if (playerBounds.intersects(finishBounds))
+        {
+            gameFinished = true;
+            finishOption = 0;
+            std::cout << "Game Finished: You Won!" << std::endl;
+        }
     }
+
 
     
 
@@ -643,7 +652,10 @@ void Scene_Frogger::update(sf::Time dt)
             else if (finishOption == 1)
             {
                 std::cout << "Back To Menu selected!" << std::endl;
-                _game->changeScene("MENU", std::make_shared<Scene_Menu>(_game), true);
+                _game->fromPausedGameFlag = true;
+                auto menu = std::make_shared<Scene_Menu>(_game);
+                _game->changeScene("MENU", menu, false);
+
             }
         }
         return; // Skip further update processing.
@@ -1218,17 +1230,25 @@ void Scene_Frogger::sRender() {
     // Draw Power-Up Status.
     sf::Text powerUpText;
     powerUpText.setFont(Assets::getInstance().getFont("main"));
-    powerUpText.setCharacterSize(20);
-    powerUpText.setFillColor(sf::Color::White);
+    powerUpText.setCharacterSize(48);
+    powerUpText.setFillColor(sf::Color::Green);
+    powerUpText.setStyle(sf::Text::Bold);
+    powerUpText.setOutlineThickness(3.f);
+    powerUpText.setOutlineColor(sf::Color::Black);
+
     if (hasSafeRiver) {
         int secondsRemaining = static_cast<int>(safeRiverDuration - safeRiverTimer);
-        powerUpText.setString("Power-Up: Safe River (" + std::to_string(secondsRemaining) + "s)");
+        powerUpText.setString("Safe River: " + std::to_string(secondsRemaining) + "s");
     }
     else {
         powerUpText.setString("");
     }
-    powerUpText.setPosition(10.f, 40.f);
+
+    sf::FloatRect bounds = powerUpText.getLocalBounds();
+    powerUpText.setOrigin(bounds.width, 0.f);
+    powerUpText.setPosition(_game->window().getSize().x - 20.f, 20.f);
     _game->window().draw(powerUpText);
+
 
     if (gameOver || gameFinished)
     {
